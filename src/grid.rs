@@ -3,6 +3,7 @@ extern crate rand;
 use rand::thread_rng;   
 use rand::Rng;
 
+
 #[derive(Clone)]
 pub struct Tile {
     pub hidden: bool, // false is seen, true is hidden
@@ -27,14 +28,24 @@ impl Tile {
     }
 }
 
-pub fn create_grid() -> Vec<Vec<Tile>> {
-    //TODO: Randomly create sizes
-    const x_size: usize = 10;
-    const y_size: usize = 10;
-    // let s = Square{
-    //     hidden: true,
-    //     value: 0,
-    // };
+pub struct GameInstance {
+    pub x_size: usize,
+    pub y_size: usize,
+    pub grid: Vec<Vec<Tile>>,
+    pub window_size: [f64; 2],
+}
+impl Default for GameInstance {
+    fn default() -> GameInstance {
+        GameInstance {
+            x_size: 10,
+            y_size: 10,
+            grid: create_grid(10, 10),
+            window_size: [400.0, 400.0],
+        }
+    }
+}
+
+pub fn create_grid(x_size: usize, y_size: usize) -> Vec<Vec<Tile>> {
     let s = Tile::new();
     let mut vec = vec![vec![s; x_size]; y_size];
     //let mut arr: Vec<i32> = [[Square{hidden: true, value: 0}; 10], 10];
@@ -108,4 +119,23 @@ pub fn debug_map(vec: &Vec<Vec<Tile>>, hidden: bool){
         }
         println!("");
     }
+}
+//Converts mouse coordinates to tile
+fn find_tile(coords: [f64; 2], game: &GameInstance) -> [f64; 2]{
+    let tile_size: [f64; 2] = [game.window_size[0]/game.x_size as f64, game.window_size[1]/game.y_size as f64];
+    let x = coords[0] / tile_size[0];
+    let y = coords[1] / tile_size[1];
+    [x, y]
+}
+
+pub fn left_click(coords: [f64; 2], game: &mut GameInstance){
+    let tile_coords = find_tile(coords, &game);
+    if game.grid[tile_coords[0] as usize][tile_coords[1] as usize].value == -1 {
+        //Do a animation for losing here
+        println!("You Lost!");
+    }
+    if game.grid[tile_coords[0] as usize][tile_coords[1] as usize].hidden == true {
+        game.grid[tile_coords[0] as usize][tile_coords[1] as usize].hidden = false;
+    }
+
 }
