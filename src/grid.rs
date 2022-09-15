@@ -128,14 +128,64 @@ fn find_tile(coords: [f64; 2], game: &GameInstance) -> [f64; 2]{
     [x, y]
 }
 
+//Calculates what value each tile should have
+pub fn fill_numbers(game: &mut GameInstance){
+    for row in 0..game.x_size as i32 {
+        for col in 0..game.y_size as i32 {
+            if game.grid[row as usize][col as usize].value != -1{
+                let mut bomb_surronding = 0;
+                //Top Left
+                let mut x = 0;
+                let mut y = 0;
+                x = row - 1;y = col - 1;
+                bomb_surronding += check_bomb(&game, x, y);
+                //Top middle
+                x = row - 1;y = col;
+                bomb_surronding += check_bomb(&game, x, y);
+                //Top Right
+                x = row - 1;y = col + 1;
+                bomb_surronding += check_bomb(&game, x, y);
+                //Middle Left
+                x = row;y = col - 1;
+                bomb_surronding += check_bomb(&game, x, y);
+                //Middle Right
+                x = row;y = col + 1;
+                bomb_surronding += check_bomb(&game, x, y);
+                //Bottom Left
+                x = row - 1; y = col + 1;
+                bomb_surronding += check_bomb(&game, x, y);
+                //Bottom Middle
+                x = row ;y = col + 1;
+                bomb_surronding += check_bomb(&game, x, y);
+                //Bottom Right
+                x = row + 1; y = col + 1;
+                bomb_surronding += check_bomb(&game, x, y);
+                game.grid[row as usize][col as usize].value = bomb_surronding as i8;
+            }
+        }
+    }
+}
+
+//Returns 1 if there is a bomb at coords
+fn check_bomb(game: &GameInstance, x: i32, y: i32) -> i32{
+    if x >= 0 && y >= 0 && x < game.x_size as i32 && y < game.y_size as i32 {
+        println!("X: {}, Y {}",x, y);
+        if game.grid[x as usize][y as usize].value == -1 {
+            return 1;
+        }
+    }
+    return 0;
+    
+}
+
 pub fn left_click(coords: [f64; 2], game: &mut GameInstance){
     let tile_coords = find_tile(coords, &game);
-    if game.grid[tile_coords[0] as usize][tile_coords[1] as usize].value == -1 {
+    if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].value == -1 {
         //Do a animation for losing here
         println!("You Lost!");
     }
-    if game.grid[tile_coords[0] as usize][tile_coords[1] as usize].hidden == true {
-        game.grid[tile_coords[0] as usize][tile_coords[1] as usize].hidden = false;
+    if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden == true {
+        game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden = false;
     }
 
 }

@@ -96,7 +96,6 @@ impl App {
                         tile_size[0],
                         tile_size[1],
                     ];
-                    y += 1.0;
                     if tile.hidden {
                         rectangle(WHITE, rect, transform, gl);
                     } else {
@@ -113,14 +112,15 @@ impl App {
                             //text(BLACK, 14, &tile.value.to_string(),, transform, gl);
                             //text.add(&tile.value.to_string(), [x * tile_size[0], y * tile_size[0]], 14, BLACK);
                             //Text::new(14).draw(&tile.value.to_string(), , &c.draw_state, transform, gl);
-
-                            text::Text::new_color(BLACK, 36).draw(&tile.value.to_string(), &mut glyph_cache, &DrawState::default(), c.transform.trans(x * tile_size[0], y *tile_size[0]), gl).unwrap();
+                            //println!("X: {}, Y: {}", (x * tile_size[0]), (y * tile_size[1]));
+                            text::Text::new_color(BLACK, 32).draw(&tile.value.to_string(), &mut glyph_cache, &DrawState::default(), c.transform.trans(x * tile_size[0] + (tile_size[0]/4.5), (y * tile_size[1]) + (tile_size[1]/1.2)), gl).unwrap();
 
                         }
                     }
+                    x += 1.0;
                 }
-                x += 1.0;
-                y = 0.0;
+                y += 1.0;
+                x = 0.0;
             }
 
             //Draw grid
@@ -149,6 +149,7 @@ fn main() {
     let mut game = GameInstance::default();
     println!("vec: {:?}", game.grid[0][0].value);
     game.grid = grid::plant_bombs(game.grid);
+    grid::fill_numbers(&mut game);
     grid::debug_map(&game.grid, false);
 
 
