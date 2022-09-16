@@ -15,6 +15,8 @@ mod grid;
 use grid::Tile;
 use grid::GameInstance;
 
+use crate::grid::flood_fill;
+
 pub struct App {
     gl: GlGraphics, // OpenGL drawing backend.
     rotation: f64,  // Rotation for the square.
@@ -103,18 +105,9 @@ impl App {
                             rectangle(RED, rect, transform, gl);
                         } else {
                             rectangle(GREEN, rect, transform, gl);
-                            //text(BLACK, 14.0, )
-                            //text(BLACK, 10, "1", character, transform, gl);
-                            //Write number in text here
-                            //text(BLACK, 14, &tile.value.to_string(), 's', transform, gl);
-                            //Text::new(14).draw(&tile.value.to_string(), &mut glyphs, &c.draw_state, transform, gl);
-                            //let ch = character::CharacterCache::character(&mut glyphs, 14, 's');
-                            //text(BLACK, 14, &tile.value.to_string(),, transform, gl);
-                            //text.add(&tile.value.to_string(), [x * tile_size[0], y * tile_size[0]], 14, BLACK);
-                            //Text::new(14).draw(&tile.value.to_string(), , &c.draw_state, transform, gl);
-                            //println!("X: {}, Y: {}", (x * tile_size[0]), (y * tile_size[1]));
-                            text::Text::new_color(BLACK, 32).draw(&tile.value.to_string(), &mut glyph_cache, &DrawState::default(), c.transform.trans(x * tile_size[0] + (tile_size[0]/4.5), (y * tile_size[1]) + (tile_size[1]/1.2)), gl).unwrap();
-
+                            if tile.value != 0 {
+                                text::Text::new_color(BLACK, 32).draw(&tile.value.to_string(), &mut glyph_cache, &DrawState::default(), c.transform.trans(x * tile_size[0] + (tile_size[0]/4.5), (y * tile_size[1]) + (tile_size[1]/1.2)), gl).unwrap();
+                            }
                         }
                     }
                     x += 1.0;

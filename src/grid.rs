@@ -90,7 +90,7 @@ pub fn plant_bombs(mut vec: Vec<Vec<Tile>>) -> Vec<Vec<Tile>>{
     let tile_count = vec.len() * vec[0].len();//Get the total number of tiles
     let mut rng = thread_rng();
     let y: f64 = rng.gen_range(0.75, 1.25);
-    let mut bomb_count = ((tile_count/6) as f64 * y).round() as i32;
+    let mut bomb_count = ((tile_count/4) as f64 * y).round() as i32;
     println!("Bomb Count {}", bomb_count);
     while bomb_count > 0 {
         let row = rng.gen_range(0, row_len);
@@ -125,7 +125,8 @@ fn find_tile(coords: [f64; 2], game: &GameInstance) -> [f64; 2]{
     let tile_size: [f64; 2] = [game.window_size[0]/game.x_size as f64, game.window_size[1]/game.y_size as f64];
     let x = coords[0] / tile_size[0];
     let y = coords[1] / tile_size[1];
-    [x, y]
+    //println!("X: {}, Y: {}", x, y);
+    [x.floor(), y.floor()]
 }
 
 //Calculates what value each tile should have
@@ -178,6 +179,79 @@ fn check_bomb(game: &GameInstance, x: i32, y: i32) -> i32{
     
 }
 
+//Checks if given coordinates is within bounds of game grid and is a value of 0
+fn valid_empty(game: &GameInstance, x: i32, y: i32) -> bool{
+    if x >= 0 && y >= 0 && x < game.x_size as i32 && y < game.y_size as i32 {
+        if game.grid[x as usize][y as usize].value == 0 && game.grid[x as usize][y as usize].hidden == true {
+            return true;
+        }
+    }
+    return false;
+}
+
+pub fn flood_fill(game: &mut GameInstance, x: i32, y: i32){
+    let mut queue: Vec<[i32; 2]> = Vec::new();
+
+    //Create structure for storing coords
+    let mut p = [x,y];
+    //Add tile to back of queue
+    queue.push(p);
+
+    game.grid[x as usize][y as usize].hidden = false;
+
+    while queue.len() > 0{
+        //Take the tile from back of queue
+        let current_tile = queue[queue.len() - 1];
+        queue.pop();
+
+        let pos_x = current_tile[0];
+        let pos_y = current_tile[1];
+
+        if valid_empty(&game, pos_x + 1, pos_y) {
+            game.grid[(pos_x + 1) as usize][pos_y as usize].hidden = false;
+            p[0] = pos_x + 1;
+            p[1] = pos_y;
+            if !queue.contains(&p){
+                queue.push(p);
+            }
+            
+        }
+        if valid_empty(&game, pos_x - 1, pos_y) {
+            game.grid[(pos_x - 1) as usize][pos_y as usize].hidden = false;
+            p[0] = pos_x - 1;
+            p[1] = pos_y;
+            if !queue.contains(&p){
+                queue.push(p);
+            }
+        }
+        if valid_empty(&game, pos_x, pos_y + 1) {
+            game.grid[pos_x as usize][(pos_y + 1) as usize].hidden = false;
+            p[0] = pos_x;
+            p[1] = pos_y + 1;
+            if !queue.contains(&p){
+                queue.push(p);
+            }
+        }
+        if valid_empty(&game, pos_x, pos_y - 1) {
+            game.grid[pos_x as usize][(pos_y - 1) as usize].hidden = false;
+            p[0] = pos_x;
+            p[1] = pos_y - 1;
+            if !queue.contains(&p){
+                queue.push(p);
+            }
+        }
+    }
+
+}
+// //Shows all empty squares connected to pass tile coordinate and 
+// fn show_empty(game: &mut GameInstance, x: i32, y: i32){
+//     if game.grid[x as usize][y as usize].flagged == false && game.grid[x as usize][y as usize].flagged == true{
+//         game.grid[x as usize][y as usize].hidden = false;
+        
+//     }
+
+// }
+
 pub fn left_click(coords: [f64; 2], game: &mut GameInstance){
     let tile_coords = find_tile(coords, &game);
     if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].value == -1 {
@@ -186,6 +260,9 @@ pub fn left_click(coords: [f64; 2], game: &mut GameInstance){
     }
     if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden == true {
         game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden = false;
+        if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].value == 0 {
+            flood_fill(game, tile_coords[1].floor() as i32, tile_coords[0].floor() as i32);
+        }
     }
 
 }
