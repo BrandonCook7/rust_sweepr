@@ -98,15 +98,18 @@ impl App {
                         tile_size[0],
                         tile_size[1],
                     ];
-                    if tile.hidden {
+                    if tile.flagged {
+                        rectangle(DARK_GRAY, rect, transform, gl);
+                    } else if tile.hidden {
                         rectangle(WHITE, rect, transform, gl);
                     } else {
                         if tile.value == -1 {
                             rectangle(RED, rect, transform, gl);
                         } else {
-                            rectangle(GREEN, rect, transform, gl);
+                            let mut color:[f32; 4] = [0.0, 1.0, 0.2*tile.value as f32, 1.0];
+                            rectangle(color, rect, transform, gl);
                             if tile.value != 0 {
-                                text::Text::new_color(BLACK, 32).draw(&tile.value.to_string(), &mut glyph_cache, &DrawState::default(), c.transform.trans(x * tile_size[0] + (tile_size[0]/4.5), (y * tile_size[1]) + (tile_size[1]/1.2)), gl).unwrap();
+                                text::Text::new_color(BLACK, 32/(game.x_size as f32 *0.1) as u32).draw(&tile.value.to_string(), &mut glyph_cache, &DrawState::default(), c.transform.trans(x * tile_size[0] + (tile_size[0]/4.5), (y * tile_size[1]) + (tile_size[1]/1.2)), gl).unwrap();
                             }
                         }
                     }
@@ -141,9 +144,11 @@ fn main() {
 
     let mut game = GameInstance::default();
     println!("vec: {:?}", game.grid[0][0].value);
-    game.grid = grid::plant_bombs(game.grid);
+    grid::plant_bombs(&mut game);
+    grid::debug_map(&game.grid, false);
     grid::fill_numbers(&mut game);
     grid::debug_map(&game.grid, false);
+    
 
 
     //Change this to OpenGL::V2_1 if not working.
@@ -184,6 +189,7 @@ fn main() {
                 }
                 MouseButton::Right => {
                     println!("Right mouse button pressed");
+                    grid::right_click(cursor, &mut game);
                 }
                 _ => ()
             }

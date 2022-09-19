@@ -33,6 +33,8 @@ pub struct GameInstance {
     pub y_size: usize,
     pub grid: Vec<Vec<Tile>>,
     pub window_size: [f64; 2],
+    pub flag_count: i32,
+    pub bomb_count: i32,
 }
 impl Default for GameInstance {
     fn default() -> GameInstance {
@@ -41,6 +43,20 @@ impl Default for GameInstance {
             y_size: 10,
             grid: create_grid(10, 10),
             window_size: [400.0, 400.0],
+            flag_count: 0,
+            bomb_count: 0,
+        }
+    }
+}
+impl GameInstance {
+    fn large() -> GameInstance {
+        GameInstance {
+            x_size: 20,
+            y_size: 20,
+            grid: create_grid(20, 20),
+            window_size: [400.0, 400.0],
+            flag_count: 0,
+            bomb_count: 0,
         }
     }
 }
@@ -84,23 +100,24 @@ pub fn plant_bombs2(mut vec: Vec<Vec<Tile>>) -> Vec<Vec<Tile>>{
     vec
 }
 //Function that plants bombs over the grid
-pub fn plant_bombs(mut vec: Vec<Vec<Tile>>) -> Vec<Vec<Tile>>{
-    let row_len = vec.len();
-    let col_len = vec[0].len();
-    let tile_count = vec.len() * vec[0].len();//Get the total number of tiles
+pub fn plant_bombs(game: &mut GameInstance){
+    let row_len = game.grid.len();
+    let col_len = game.grid[0].len();
+    let tile_count = game.grid.len() * game.grid[0].len();//Get the total number of tiles
     let mut rng = thread_rng();
     let y: f64 = rng.gen_range(0.75, 1.25);
-    let mut bomb_count = ((tile_count/4) as f64 * y).round() as i32;
+    let mut bomb_count = ((tile_count/5) as f64 * y).round() as i32;
     println!("Bomb Count {}", bomb_count);
     while bomb_count > 0 {
         let row = rng.gen_range(0, row_len);
         let col = rng.gen_range(0, col_len);
-        if vec[row as usize][col as usize].value != -1 {
-            vec[row as usize][col as usize] = Tile::bomb();
+        if game.grid[row as usize][col as usize].value != -1 {
+            game.grid[row as usize][col as usize] = Tile::bomb();
             bomb_count -= 1;
         }
     }
-    vec
+    game.bomb_count = bomb_count;
+    game.flag_count = bomb_count;
 }
 
 //Debugging function to see how grid looks
@@ -153,10 +170,10 @@ pub fn fill_numbers(game: &mut GameInstance){
                 x = row;y = col + 1;
                 bomb_surronding += check_bomb(&game, x, y);
                 //Bottom Left
-                x = row - 1; y = col + 1;
+                x = row + 1; y = col - 1;
                 bomb_surronding += check_bomb(&game, x, y);
                 //Bottom Middle
-                x = row ;y = col + 1;
+                x = row + 1;y = col;
                 bomb_surronding += check_bomb(&game, x, y);
                 //Bottom Right
                 x = row + 1; y = col + 1;
@@ -189,13 +206,19 @@ fn valid_empty(game: &GameInstance, x: i32, y: i32) -> bool{
     return false;
 }
 
-pub fn flood_fill(game: &mut GameInstance, x: i32, y: i32){
+//Uses flood fill algorithm to show empty adjacent tiles
+pub fn flood_fill(game: &mut GameInstance, x: i32, y: i32) -> Vec<[i32; 2]>{
     let mut queue: Vec<[i32; 2]> = Vec::new();
+    //This vector is to remember where all revealed tiles are for show_empty_edges()
+    let mut shown_tiles: Vec<[i32; 2]> = Vec::new();
 
     //Create structure for storing coords
     let mut p = [x,y];
     //Add tile to back of queue
     queue.push(p);
+    shown_tiles.push(p);
+
+
 
     game.grid[x as usize][y as usize].hidden = false;
 
@@ -213,6 +236,7 @@ pub fn flood_fill(game: &mut GameInstance, x: i32, y: i32){
             p[1] = pos_y;
             if !queue.contains(&p){
                 queue.push(p);
+                shown_tiles.push(p);
             }
             
         }
@@ -222,6 +246,7 @@ pub fn flood_fill(game: &mut GameInstance, x: i32, y: i32){
             p[1] = pos_y;
             if !queue.contains(&p){
                 queue.push(p);
+                shown_tiles.push(p);
             }
         }
         if valid_empty(&game, pos_x, pos_y + 1) {
@@ -230,6 +255,7 @@ pub fn flood_fill(game: &mut GameInstance, x: i32, y: i32){
             p[1] = pos_y + 1;
             if !queue.contains(&p){
                 queue.push(p);
+                shown_tiles.push(p);
             }
         }
         if valid_empty(&game, pos_x, pos_y - 1) {
@@ -238,19 +264,31 @@ pub fn flood_fill(game: &mut GameInstance, x: i32, y: i32){
             p[1] = pos_y - 1;
             if !queue.contains(&p){
                 queue.push(p);
+                shown_tiles.push(p);
             }
         }
     }
+    shown_tiles
 
 }
-// //Shows all empty squares connected to pass tile coordinate and 
-// fn show_empty(game: &mut GameInstance, x: i32, y: i32){
-//     if game.grid[x as usize][y as usize].flagged == false && game.grid[x as usize][y as usize].flagged == true{
-//         game.grid[x as usize][y as usize].hidden = false;
-        
-//     }
-
-// }
+//Reveals all tiles next to empty tiles
+fn show_empty_edges(game: &mut GameInstance, shown_tiles: Vec<[i32; 2]>){
+    let mut check_coords: Vec<[i32; 2]> = vec![[-1,-1],[-1,0],[-1,1],
+                                           [0,-1],[0,1],
+                                           [1,-1],[1,0],[1,1]];
+    for i in 0..shown_tiles.len(){
+        for j in 0..check_coords.len() {
+            let x = shown_tiles[i][0] + check_coords[j][0];
+            let y = shown_tiles[i][1] + check_coords[j][1];
+            if x >= 0 && y >= 0 && x < game.x_size as i32 && y < game.y_size as i32 {
+                let val = game.grid[(shown_tiles[i][0] + check_coords[j][0]) as usize][(shown_tiles[i][1] + check_coords[j][1]) as usize].value;
+                if val != 0 && val != -1{
+                    game.grid[(shown_tiles[i][0] + check_coords[j][0]) as usize][(shown_tiles[i][1] + check_coords[j][1]) as usize].hidden = false;
+                }
+            }
+        }
+    }
+}
 
 pub fn left_click(coords: [f64; 2], game: &mut GameInstance){
     let tile_coords = find_tile(coords, &game);
@@ -261,8 +299,21 @@ pub fn left_click(coords: [f64; 2], game: &mut GameInstance){
     if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden == true {
         game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden = false;
         if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].value == 0 {
-            flood_fill(game, tile_coords[1].floor() as i32, tile_coords[0].floor() as i32);
+            let shown_tiles = flood_fill(game, tile_coords[1].floor() as i32, tile_coords[0].floor() as i32);
+            show_empty_edges(game, shown_tiles);
         }
     }
+}
 
+pub fn right_click(coords: [f64; 2], game: &mut GameInstance){
+    let tile_coords = find_tile(coords, &game);
+    if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden == true {
+        if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged == false {
+            game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged = true;
+            println!("FLAGGED");
+        } else {
+            game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged = false;
+        }
+    }
+    
 }
