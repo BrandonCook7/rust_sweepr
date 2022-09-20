@@ -22,39 +22,6 @@ pub struct App {
     rotation: f64,  // Rotation for the square.
 }
 
-
-
-// impl App {
-//     fn render(&mut self, args: &RenderArgs) {
-//         use graphics::*;
-
-//         const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
-//         const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
-
-//         let square = rectangle::square(0.0, 0.0, 50.0);
-//         let rotation = self.rotation;
-//         let (x, y) = (args.window_size[0] / 2.0, args.window_size[1] / 2.0);
-
-//         self.gl.draw(args.viewport(), |c, gl| {
-//             // Clear the screen.
-//             clear(GREEN, gl);
-
-//             let transform = c
-//                 .transform
-//                 .trans(x, y)
-//                 .rot_rad(rotation)
-//                 .trans(-25.0, -25.0);
-
-//             // Draw a box rotating around the middle of the screen.
-//             rectangle(RED, square, transform, gl);
-//         });
-//     }
-
-//     fn update(&mut self, args: &UpdateArgs) {
-//         // Rotate 2 radians per second.
-//         self.rotation += 2.0 * args.dt;
-//     }
-// }
 impl App {
     fn render(&mut self, args: &RenderArgs, game: &GameInstance) {
         use graphics::*;
@@ -86,7 +53,7 @@ impl App {
             //Draw tiles
 
             let mut glyph_cache = GlyphCache::new("assets/Roboto-Medium.ttf", (), TextureSettings::new()).unwrap();
-    
+            
             let mut x = 0.0;//x position of tile
             let mut y = 0.0;//y position of tile
             //let mut text = gfx_text::new(factory).build().unwrap();
@@ -100,6 +67,10 @@ impl App {
                     ];
                     if tile.flagged {
                         rectangle(DARK_GRAY, rect, transform, gl);
+                        //Polygon()
+                        //polygon()
+                        //let p = c.draw_state.
+                        //rectangle()
                     } else if tile.hidden {
                         rectangle(WHITE, rect, transform, gl);
                     } else {
@@ -186,10 +157,16 @@ fn main() {
                 MouseButton::Left => {
                     println!("Left mouse button pressed");
                     grid::left_click(cursor, &mut game);
+                    if grid::check_win(&game) {
+                        println!("YOU WIN!")
+                    }
                 }
                 MouseButton::Right => {
                     println!("Right mouse button pressed");
                     grid::right_click(cursor, &mut game);
+                    if grid::check_win(&game) {
+                        println!("YOU WIN!")
+                    }
                 }
                 _ => ()
             }

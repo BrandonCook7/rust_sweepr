@@ -32,9 +32,9 @@ pub struct GameInstance {
     pub x_size: usize,
     pub y_size: usize,
     pub grid: Vec<Vec<Tile>>,
-    pub window_size: [f64; 2],
-    pub flag_count: i32,
-    pub bomb_count: i32,
+    pub window_size: [f64; 2], //Window size should use x_size and y_size
+    pub flag_count: i32, //Variable for storing how many flags are left mutable
+    pub bomb_count: i32, //Variable for storing how many bombs are planted - STATIC
 }
 impl Default for GameInstance {
     fn default() -> GameInstance {
@@ -68,37 +68,6 @@ pub fn create_grid(x_size: usize, y_size: usize) -> Vec<Vec<Tile>> {
     //let mut arr:[[Square; 10]; 10] = [[s; 10]; 10];
     return vec;
 }
-
-//Bad designed plant_bombs func
-pub fn plant_bombs2(mut vec: Vec<Vec<Tile>>) -> Vec<Vec<Tile>>{
-    let row_len = vec.len();
-    let col_len = vec[0].len();
-    let tile_count = vec.len() * vec[0].len();//Get the total number of tiles
-    let mut rng = thread_rng();
-    let y: f64 = rng.gen_range(0.75, 1.25);
-    let mut bomb_count = ((tile_count/6) as f64 * y).round() as i32;
-    println!("Bomb Count {}", bomb_count);
-    let mut col_index = 0;
-    let mut row_index = 0;
-    let chance = bomb_count as f32/tile_count as f32; // Chance there should be a bomb
-    while bomb_count > 0 && row_index < row_len{
-        let gen = rng.gen_range(0.0, 1.0);
-        if gen <= chance {
-            println!("PLANT");
-            vec[row_index][col_index] = Tile::bomb(); //Plant bomb if chance 
-            bomb_count -= 1;
-        }
-        col_index += 1;
-        if col_index == col_len {
-            row_index += 1;
-            col_index = 0;
-        }
-    }
-    println!("Left over Bombs: {}", bomb_count);
-    println!("Last Loc col: {}, row: {}", col_index, row_index);
-
-    vec
-}
 //Function that plants bombs over the grid
 pub fn plant_bombs(game: &mut GameInstance){
     let row_len = game.grid.len();
@@ -106,7 +75,9 @@ pub fn plant_bombs(game: &mut GameInstance){
     let tile_count = game.grid.len() * game.grid[0].len();//Get the total number of tiles
     let mut rng = thread_rng();
     let y: f64 = rng.gen_range(0.75, 1.25);
-    let mut bomb_count = ((tile_count/5) as f64 * y).round() as i32;
+    let mut bomb_count = ((tile_count/10) as f64 * y).round() as i32;
+    game.bomb_count = bomb_count;
+    game.flag_count = bomb_count;
     println!("Bomb Count {}", bomb_count);
     while bomb_count > 0 {
         let row = rng.gen_range(0, row_len);
@@ -116,8 +87,7 @@ pub fn plant_bombs(game: &mut GameInstance){
             bomb_count -= 1;
         }
     }
-    game.bomb_count = bomb_count;
-    game.flag_count = bomb_count;
+
 }
 
 //Debugging function to see how grid looks
@@ -232,6 +202,7 @@ pub fn flood_fill(game: &mut GameInstance, x: i32, y: i32) -> Vec<[i32; 2]>{
 
         if valid_empty(&game, pos_x + 1, pos_y) {
             game.grid[(pos_x + 1) as usize][pos_y as usize].hidden = false;
+            game.grid[(pos_x + 1) as usize][pos_y as usize].flagged = false;
             p[0] = pos_x + 1;
             p[1] = pos_y;
             if !queue.contains(&p){
@@ -242,6 +213,7 @@ pub fn flood_fill(game: &mut GameInstance, x: i32, y: i32) -> Vec<[i32; 2]>{
         }
         if valid_empty(&game, pos_x - 1, pos_y) {
             game.grid[(pos_x - 1) as usize][pos_y as usize].hidden = false;
+            game.grid[(pos_x - 1) as usize][pos_y as usize].flagged = false;
             p[0] = pos_x - 1;
             p[1] = pos_y;
             if !queue.contains(&p){
@@ -251,6 +223,7 @@ pub fn flood_fill(game: &mut GameInstance, x: i32, y: i32) -> Vec<[i32; 2]>{
         }
         if valid_empty(&game, pos_x, pos_y + 1) {
             game.grid[pos_x as usize][(pos_y + 1) as usize].hidden = false;
+            game.grid[pos_x as usize][(pos_y + 1) as usize].flagged = false;
             p[0] = pos_x;
             p[1] = pos_y + 1;
             if !queue.contains(&p){
@@ -260,6 +233,7 @@ pub fn flood_fill(game: &mut GameInstance, x: i32, y: i32) -> Vec<[i32; 2]>{
         }
         if valid_empty(&game, pos_x, pos_y - 1) {
             game.grid[pos_x as usize][(pos_y - 1) as usize].hidden = false;
+            game.grid[pos_x as usize][(pos_y - 1) as usize].flagged = false;
             p[0] = pos_x;
             p[1] = pos_y - 1;
             if !queue.contains(&p){
@@ -303,6 +277,8 @@ pub fn left_click(coords: [f64; 2], game: &mut GameInstance){
             show_empty_edges(game, shown_tiles);
         }
     }
+
+
 }
 
 pub fn right_click(coords: [f64; 2], game: &mut GameInstance){
@@ -316,4 +292,25 @@ pub fn right_click(coords: [f64; 2], game: &mut GameInstance){
         }
     }
     
+}
+
+//TODO: Impliment a more efficient way to check if player won
+//Possibly check if tile is good when drawing them
+pub fn check_win(game: &GameInstance) -> bool{
+    let total_tiles = game.x_size * game.y_size;
+    let mut tiles_shown = 0;
+
+    for i in 0..game.grid.len(){
+        for j in 0..game.grid[0].len() {
+            let tile = &game.grid[i as usize][j as usize];
+            if tile.value != -1 && tile.hidden == false {
+                tiles_shown += 1;
+            }
+        }
+    }
+    if (total_tiles as i32) - tiles_shown == game.bomb_count {
+        true
+    } else {
+        false
+    }
 }
