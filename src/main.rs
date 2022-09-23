@@ -4,11 +4,14 @@ extern crate opengl_graphics;
 extern crate piston;
 
 use glutin_window::GlutinWindow as Window;
-use opengl_graphics::{GlGraphics, OpenGL, GlyphCache};
+use opengl_graphics::{GlGraphics, OpenGL, GlyphCache, Texture};
+use graphics::{Image, clear};
+use graphics::rectangle::square;
 use piston::event_loop::{EventSettings, Events};
 use piston::input::{RenderArgs, Button, MouseButton, MouseCursorEvent, PressEvent, RenderEvent, UpdateArgs, UpdateEvent};
 use piston::window::WindowSettings;
 use piston_window::*;
+use std::path::Path;
 
 
 mod grid;
@@ -16,6 +19,13 @@ use grid::Tile;
 use grid::GameInstance;
 
 use crate::grid::flood_fill;
+
+// struct Images {
+//     box_1: String,
+//     box_2: String,
+//     box_3: String,
+//     box_4:
+// }
 
 pub struct App {
     gl: GlGraphics, // OpenGL drawing backend.
@@ -51,7 +61,8 @@ impl App {
             let col_len = game.x_size;
             
             //Draw tiles
-
+            //let image   = Image::new().rect(rectangle::square(0.0, 0.0, 200.0));
+            //let texture = Texture::from_path(Path::new("assets/tileset_01/box_1.png")).unwrap();
             let mut glyph_cache = GlyphCache::new("assets/Roboto-Medium.ttf", (), TextureSettings::new()).unwrap();
             
             let mut x = 0.0;//x position of tile
