@@ -18,7 +18,7 @@ mod grid;
 use grid::Tile;
 use grid::GameInstance;
 
-use crate::grid::flood_fill;
+use crate::grid::{flood_fill, Header};
 
 // struct Images {
 //     box_1: String,
@@ -37,18 +37,19 @@ impl App {
         use graphics::*;
 
         //Get 2d vector dimensions
-        let tile_size: [f64; 2] = [args.window_size[0]/game.x_size as f64, args.window_size[1]/game.y_size as f64];
+        let tile_size: [f64; 2] = [game.grid_size[0]/game.x_size as f64, game.grid_size[0]/game.y_size as f64];
         //Color format is Red, Green, Blue,  Alpha
         const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
         const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
+        const LIGHT_RED: [f32; 4] = [1.0, 0.33, 0.2, 1.0];
         const GRAY: [f32; 4] = [0.76, 0.84, 0.84, 1.0];
         const DARK_GRAY: [f32; 4] = [0.36, 0.4, 0.4, 1.0];
-        const WHITE: [f32; 4] = [0.0, 0.0, 0.0, 0.0];
-        const BLACK: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+        const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
+        const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 
-        let square = rectangle::square(0.0, 0.0, 50.0);
+        //let square = rectangle::square(0.0, 0.0, 50.0);
         let rotation = self.rotation;
-        let (x, y) = (args.window_size[0] / 2.0, args.window_size[1] / 2.0);
+        //let (x, y) = (args.window_size[0] / 2.0, args.window_size[1] / 2.0);
 
         self.gl.draw(args.viewport(), |c, gl| {
             // Clear the screen.
@@ -61,10 +62,30 @@ impl App {
             let col_len = game.x_size;
             
             //Draw tiles
-            //let image   = Image::new().rect(rectangle::square(0.0, 0.0, 200.0));
-            //let texture = Texture::from_path(Path::new("assets/tileset_01/box_1.png")).unwrap();
+            let ts = TextureSettings::new();
+            let ds = DrawState::default();
+            //ts.set_border_color(GRAY);
             let mut glyph_cache = GlyphCache::new("assets/Roboto-Medium.ttf", (), TextureSettings::new()).unwrap();
+
+
+            //Draw Menu header HERE
+            let h = &game.header;
+            let header_background: [f64;4] = [
+                0.0,
+                game.grid_size[1],
+                game.window_size[0],
+                game.window_size[1],
+            ];
+
+            let middle_header = game.grid_size[1] + ((game.window_size[1] - game.grid_size[1])/2.0);
             
+            let image   = Image::new().rect(rectangle::square(0.0, middle_header-16.0, 32.0));
+            let texture = Texture::from_path(Path::new("assets/tileset_01/flag.png"), &ts).unwrap();
+            rectangle(h.bg_color, header_background, transform, gl);
+            image.draw(&texture, &ds, transform, gl);
+            text::Text::new_color(BLACK, 12 as u32).draw(&game.flag_count.to_string(), &mut glyph_cache, &DrawState::default(), c.transform.trans(30.0, middle_header+4.0), gl).unwrap();
+
+
             let mut x = 0.0;//x position of tile
             let mut y = 0.0;//y position of tile
             //let mut text = gfx_text::new(factory).build().unwrap();
@@ -86,12 +107,13 @@ impl App {
                         rectangle(WHITE, rect, transform, gl);
                     } else {
                         if tile.value == -1 {
-                            rectangle(RED, rect, transform, gl);
+                            rectangle(LIGHT_RED, rect, transform, gl);
+                            
                         } else {
-                            let mut color:[f32; 4] = [0.0, 1.0, 0.2*tile.value as f32, 1.0];
+                            let mut color:[f32; 4] = [0.0, 1.0, 0.2 + 0.3*tile.value as f32, 1.0];
                             rectangle(color, rect, transform, gl);
                             if tile.value != 0 {
-                                text::Text::new_color(BLACK, 32/(game.x_size as f32 *0.1) as u32).draw(&tile.value.to_string(), &mut glyph_cache, &DrawState::default(), c.transform.trans(x * tile_size[0] + (tile_size[0]/4.5), (y * tile_size[1]) + (tile_size[1]/1.2)), gl).unwrap();
+                                text::Text::new_color(WHITE, 32/(game.x_size as f32 *0.1) as u32).draw(&tile.value.to_string(), &mut glyph_cache, &DrawState::default(), c.transform.trans(x * tile_size[0] + (tile_size[0]/4.5), (y * tile_size[1]) + (tile_size[1]/1.2)), gl).unwrap();
                             }
                         }
                     }
@@ -102,11 +124,11 @@ impl App {
             }
 
             //Draw grid
-            for row in 1..row_len as i32 {
-                line(DARK_GRAY, 1.0, [row as f64 *tile_size[1], 0.0, row as f64 *tile_size[1], args.window_size[1] as f64], transform, gl);
+            for row in 1..row_len as i32 + 1 {
+                line(DARK_GRAY, 1.0, [row as f64 *tile_size[1], 0.0, row as f64 *tile_size[1], game.grid_size[1] as f64], transform, gl);
             }
-            for col in 1..col_len as i32 {
-                line(DARK_GRAY, 1.0, [0.0, col as f64 *tile_size[0], args.window_size[0] as f64, col as f64 *tile_size[0]], transform, gl);
+            for col in 1..col_len as i32 + 1 {
+                line(DARK_GRAY, 1.0, [0.0, col as f64 *tile_size[0], game.grid_size[0] as f64, col as f64 *tile_size[0]], transform, gl);
             }
         });
     }
@@ -125,6 +147,9 @@ impl App {
 fn main() {
 
     let mut game = GameInstance::default();
+
+    let h = Header::default();
+    let offset = h.header_height;
     println!("vec: {:?}", game.grid[0][0].value);
     grid::plant_bombs(&mut game);
     grid::debug_map(&game.grid, false);
@@ -137,7 +162,7 @@ fn main() {
     let opengl = OpenGL::V3_2;
 
     // Create a Glutin window.
-    let mut window: Window = WindowSettings::new("Minesweeper", [game.window_size[0], game.window_size[1]])
+    let mut window: PistonWindow = WindowSettings::new("Minesweeper", [game.window_size[0], game.window_size[1]])
         //.graphics_api(opengl)
         .exit_on_esc(true)
         .build()

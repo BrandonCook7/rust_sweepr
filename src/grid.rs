@@ -28,13 +28,31 @@ impl Tile {
     }
 }
 
+pub struct Header {
+    pub header_height: f64,
+    pub font: String,
+    pub bg_color: [f32; 4],
+    pub font_color: [f32; 4],
+}
+impl Default for Header {
+    fn default() -> Header {
+        Header {
+            header_height: 30.0,
+            font: String::from("assets/Roboto-Medium.ttf"),
+            bg_color: [1.0, 1.0, 1.0, 1.0],
+            font_color: [0.0, 0.0, 0.0, 1.0],
+        }
+    }
+}
 pub struct GameInstance {
     pub x_size: usize,
     pub y_size: usize,
     pub grid: Vec<Vec<Tile>>,
-    pub window_size: [f64; 2], //Window size should use x_size and y_size
+    pub grid_size: [f64; 2], //Window size should use x_size and y_size
+    pub window_size: [f64; 2],
     pub flag_count: i32, //Variable for storing how many flags are left mutable
     pub bomb_count: i32, //Variable for storing how many bombs are planted - STATIC
+    pub header: Header,
 }
 impl Default for GameInstance {
     fn default() -> GameInstance {
@@ -42,9 +60,11 @@ impl Default for GameInstance {
             x_size: 10,
             y_size: 10,
             grid: create_grid(10, 10),
-            window_size: [400.0, 400.0],
+            grid_size: [400.0, 400.0],
+            window_size: [400.0, 430.0],
             flag_count: 0,
             bomb_count: 0,
+            header: Header::default(),
         }
     }
 }
@@ -54,9 +74,11 @@ impl GameInstance {
             x_size: 20,
             y_size: 20,
             grid: create_grid(20, 20),
+            grid_size: [400.0, 400.0],
             window_size: [400.0, 400.0],
             flag_count: 0,
             bomb_count: 0,
+            header: Header::default(),
         }
     }
 }
@@ -75,7 +97,7 @@ pub fn plant_bombs(game: &mut GameInstance){
     let tile_count = game.grid.len() * game.grid[0].len();//Get the total number of tiles
     let mut rng = thread_rng();
     let y: f64 = rng.gen_range(0.75, 1.25);
-    let mut bomb_count = ((tile_count/10) as f64 * y).round() as i32;
+    let mut bomb_count = ((tile_count/5) as f64 * y).round() as i32;
     game.bomb_count = bomb_count;
     game.flag_count = bomb_count;
     println!("Bomb Count {}", bomb_count);
@@ -109,7 +131,7 @@ pub fn debug_map(vec: &Vec<Vec<Tile>>, hidden: bool){
 }
 //Converts mouse coordinates to tile
 fn find_tile(coords: [f64; 2], game: &GameInstance) -> [f64; 2]{
-    let tile_size: [f64; 2] = [game.window_size[0]/game.x_size as f64, game.window_size[1]/game.y_size as f64];
+    let tile_size: [f64; 2] = [game.grid_size[0]/game.x_size as f64, game.grid_size[1]/game.y_size as f64];
     let x = coords[0] / tile_size[0];
     let y = coords[1] / tile_size[1];
     //println!("X: {}, Y: {}", x, y);
@@ -286,9 +308,10 @@ pub fn right_click(coords: [f64; 2], game: &mut GameInstance){
     if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden == true {
         if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged == false {
             game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged = true;
-            println!("FLAGGED");
+            game.flag_count -= 1;
         } else {
             game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged = false;
+            game.flag_count += 1;
         }
     }
     
