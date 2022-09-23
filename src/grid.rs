@@ -91,7 +91,9 @@ pub fn create_grid(x_size: usize, y_size: usize) -> Vec<Vec<Tile>> {
     return vec;
 }
 //Function that plants bombs over the grid
-pub fn plant_bombs(game: &mut GameInstance){
+pub fn plant_bombs(game: &mut GameInstance, coords: [f64; 2]){
+    //Get tile for first tile selected
+    let tile_coords = find_tile(coords, &game);
     let row_len = game.grid.len();
     let col_len = game.grid[0].len();
     let tile_count = game.grid.len() * game.grid[0].len();//Get the total number of tiles
@@ -104,10 +106,18 @@ pub fn plant_bombs(game: &mut GameInstance){
     while bomb_count > 0 {
         let row = rng.gen_range(0, row_len);
         let col = rng.gen_range(0, col_len);
-        if game.grid[row as usize][col as usize].value != -1 {
-            game.grid[row as usize][col as usize] = Tile::bomb();
-            bomb_count -= 1;
+        // if (row != tile_coords[1] && col != tile_coords[0]) ||
+        // (row != tile_coords[1]-1 && col != tile_coords[0]-1) || 
+        // (row != tile_coords[1]-1 && col != tile_coords[0]-1) || 
+        let r = row as f64;
+        let c = col as f64;
+        if !(r as f64 >= tile_coords[1]-1.0 && c >= tile_coords[0]-1.0 && r <= tile_coords[1]+1.0 && c <= tile_coords[0]+1.0) {
+            if game.grid[row as usize][col as usize].value != -1 {
+                game.grid[row as usize][col as usize] = Tile::bomb();
+                bomb_count -= 1;
+            }
         }
+
     }
 
 }

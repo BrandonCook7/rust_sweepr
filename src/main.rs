@@ -142,21 +142,21 @@ impl App {
 
 }
 
-
-
 fn main() {
+
+    let mut game_start = false;
 
     let mut game = GameInstance::default();
 
     let h = Header::default();
     let offset = h.header_height;
     println!("vec: {:?}", game.grid[0][0].value);
-    grid::plant_bombs(&mut game);
-    grid::debug_map(&game.grid, false);
-    grid::fill_numbers(&mut game);
-    grid::debug_map(&game.grid, false);
-    
-
+    if game_start {
+        //grid::plant_bombs(&mut game);
+        //grid::fill_numbers(&mut game);
+        grid::debug_map(&game.grid, false);
+        
+    }
 
     //Change this to OpenGL::V2_1 if not working.
     let opengl = OpenGL::V3_2;
@@ -191,18 +191,27 @@ fn main() {
             println!("Mouse button pressed: {:?}", button);
             match button {
                 MouseButton::Left => {
-                    println!("Left mouse button pressed");
-                    grid::left_click(cursor, &mut game);
-                    if grid::check_win(&game) {
-                        println!("YOU WIN!")
+                    if !game_start {
+                        grid::plant_bombs(&mut game, cursor);
+                        grid::fill_numbers(&mut game);
+                        grid::left_click(cursor, &mut game);
+                        game_start = true;
+                    } else {
+                        grid::left_click(cursor, &mut game);
+                        if grid::check_win(&game) {
+                            println!("YOU WIN!")
+                    }
+
                     }
                 }
                 MouseButton::Right => {
-                    println!("Right mouse button pressed");
-                    grid::right_click(cursor, &mut game);
-                    if grid::check_win(&game) {
-                        println!("YOU WIN!")
+                    if game_start {
+                        grid::right_click(cursor, &mut game);
+                        if grid::check_win(&game) {
+                            println!("YOU WIN!")
+                        }
                     }
+
                 }
                 _ => ()
             }
