@@ -1,3 +1,7 @@
+use chrono::DateTime;
+use chrono::Utc;
+use chrono::NaiveTime;
+
 extern crate rand;
 
 use rand::thread_rng;   
@@ -52,6 +56,7 @@ pub struct GameInstance {
     pub window_size: [f64; 2],
     pub flag_count: i32, //Variable for storing how many flags are left mutable
     pub bomb_count: i32, //Variable for storing how many bombs are planted - STATIC
+    pub start_time: NaiveTime,
     pub header: Header,
 }
 impl Default for GameInstance {
@@ -64,6 +69,7 @@ impl Default for GameInstance {
             window_size: [400.0, 430.0],
             flag_count: 0,
             bomb_count: 0,
+            start_time: chrono::offset::Utc::now().time(),
             header: Header::default(),
         }
     }
@@ -75,9 +81,10 @@ impl GameInstance {
             y_size: 20,
             grid: create_grid(20, 20),
             grid_size: [400.0, 400.0],
-            window_size: [400.0, 400.0],
+            window_size: [400.0, 430.0],
             flag_count: 0,
             bomb_count: 0,
+            start_time: chrono::offset::Utc::now().time(),
             header: Header::default(),
         }
     }
@@ -297,34 +304,43 @@ fn show_empty_edges(game: &mut GameInstance, shown_tiles: Vec<[i32; 2]>){
 }
 
 pub fn left_click(coords: [f64; 2], game: &mut GameInstance){
-    let tile_coords = find_tile(coords, &game);
-    if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].value == -1 {
-        //Do a animation for losing here
-        println!("You Lost!");
-    }
-    if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden == true {
-        game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden = false;
-        if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].value == 0 {
-            let shown_tiles = flood_fill(game, tile_coords[1].floor() as i32, tile_coords[0].floor() as i32);
-            show_empty_edges(game, shown_tiles);
+    if click_on_grid(&coords, &game) {
+        let tile_coords = find_tile(coords, &game);
+        if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].value == -1 {
+            //Do a animation for losing here
+            println!("You Lost!");
+        }
+        if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden == true {
+            game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden = false;
+            if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].value == 0 {
+                let shown_tiles = flood_fill(game, tile_coords[1].floor() as i32, tile_coords[0].floor() as i32);
+                show_empty_edges(game, shown_tiles);
+            }
         }
     }
-
-
 }
 
 pub fn right_click(coords: [f64; 2], game: &mut GameInstance){
-    let tile_coords = find_tile(coords, &game);
-    if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden == true {
-        if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged == false {
-            game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged = true;
-            game.flag_count -= 1;
-        } else {
-            game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged = false;
-            game.flag_count += 1;
+    if click_on_grid(&coords, &game) {
+        let tile_coords = find_tile(coords, &game);
+        if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden == true {
+            if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged == false {
+                game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged = true;
+                game.flag_count -= 1;
+            } else {
+                game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged = false;
+                game.flag_count += 1;
+            }
         }
     }
-    
+}
+
+pub fn click_on_grid(coords: &[f64; 2], game: &GameInstance) -> bool{
+    if coords[0] > game.grid_size[1] || coords[1] > game.grid_size[0] {
+        false
+    } else {
+        true
+    }
 }
 
 //TODO: Impliment a more efficient way to check if player won

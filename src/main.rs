@@ -1,3 +1,5 @@
+use chrono::Utc;
+
 extern crate glutin_window;
 extern crate graphics;
 extern crate opengl_graphics;
@@ -18,7 +20,7 @@ mod grid;
 use grid::Tile;
 use grid::GameInstance;
 
-use crate::grid::{flood_fill, Header};
+use crate::grid::{flood_fill, Header, click_on_grid};
 
 // struct Images {
 //     box_1: String,
@@ -30,6 +32,7 @@ use crate::grid::{flood_fill, Header};
 pub struct App {
     gl: GlGraphics, // OpenGL drawing backend.
     rotation: f64,  // Rotation for the square.
+    timer: f64,
 }
 
 impl App {
@@ -43,12 +46,14 @@ impl App {
         const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
         const LIGHT_RED: [f32; 4] = [1.0, 0.33, 0.2, 1.0];
         const GRAY: [f32; 4] = [0.76, 0.84, 0.84, 1.0];
-        const DARK_GRAY: [f32; 4] = [0.36, 0.4, 0.4, 1.0];
+        const DARK_GRAY: [f32; 4] = [0.3, 0.4, 0.4, 1.0];
+        const SOFT_GRAY: [f32; 4] = [0.56, 0.56, 0.53, 1.0];
         const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
         const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 
         //let square = rectangle::square(0.0, 0.0, 50.0);
         let rotation = self.rotation;
+        let timer2 = self.timer;
         //let (x, y) = (args.window_size[0] / 2.0, args.window_size[1] / 2.0);
 
         self.gl.draw(args.viewport(), |c, gl| {
@@ -78,13 +83,22 @@ impl App {
             ];
 
             let middle_header = game.grid_size[1] + ((game.window_size[1] - game.grid_size[1])/2.0);
-            
-            let image   = Image::new().rect(rectangle::square(0.0, middle_header-16.0, 32.0));
-            let texture = Texture::from_path(Path::new("assets/tileset_01/flag.png"), &ts).unwrap();
+            //Draws header background
             rectangle(h.bg_color, header_background, transform, gl);
-            image.draw(&texture, &ds, transform, gl);
+            //Draw Flag icon
+            let flag_image = Image::new().rect(rectangle::square(0.0, middle_header-16.0, 32.0));
+            let flag_texture = Texture::from_path(Path::new("assets/tileset_01/flag.png"), &ts).unwrap();
+            flag_image.draw(&flag_texture, &ds, transform, gl);
+            //Draws flag count
             text::Text::new_color(BLACK, 12 as u32).draw(&game.flag_count.to_string(), &mut glyph_cache, &DrawState::default(), c.transform.trans(30.0, middle_header+4.0), gl).unwrap();
-
+            //Draws time
+            //let mut timer = chrono::offset::Utc::now().time() - game.start_time;
+            let time_string = (self.timer as i32).to_string();
+            text::Text::new_color(BLACK, 12 as u32).draw(&time_string, &mut glyph_cache, &DrawState::default(), c.transform.trans(game.window_size[0]-20.0, middle_header+4.0), gl).unwrap();
+            //Draw clock icon
+            let clock_image = Image::new().rect(rectangle::square(game.window_size[0]-50.0, middle_header-12.0, 24.0));
+            let clock_texture = Texture::from_path(Path::new("assets/tileset_01/clock.png"), &ts).unwrap();
+            clock_image.draw(&clock_texture, &ds, transform, gl);
 
             let mut x = 0.0;//x position of tile
             let mut y = 0.0;//y position of tile
@@ -98,7 +112,7 @@ impl App {
                         tile_size[1],
                     ];
                     if tile.flagged {
-                        rectangle(DARK_GRAY, rect, transform, gl);
+                        rectangle(SOFT_GRAY, rect, transform, gl);
                         //Polygon()
                         //polygon()
                         //let p = c.draw_state.
@@ -107,10 +121,20 @@ impl App {
                         rectangle(WHITE, rect, transform, gl);
                     } else {
                         if tile.value == -1 {
-                            rectangle(LIGHT_RED, rect, transform, gl);
+                            rectangle([1.0, 0.68, 0.68, 1.0], rect, transform, gl);
                             
                         } else {
-                            let mut color:[f32; 4] = [0.0, 1.0, 0.2 + 0.3*tile.value as f32, 1.0];
+                            let mut color:[f32; 4];
+                            match tile.value{
+                                5 => color = [1.0, 0.78, 1.0, 1.0],
+                                4 => color = [0.74, 0.7, 1.0, 1.0],
+                                3 => color = [0.63, 0.77, 1.0, 1.0],
+                                2 => color = [0.61, 0.96, 1.0, 1.0],
+                                1 => color = [0.79, 1.0, 0.75, 1.0],
+                                0 => color = [0.99, 1.0, 0.71, 1.0],
+                                _ => color = [1.0, 0.84, 0.3529, 1.0],
+                            }
+                            //let mut color:[f32; 4] = [0.0, 1.0, 0.1 + 0.35*tile.value as f32, 1.0];
                             rectangle(color, rect, transform, gl);
                             if tile.value != 0 {
                                 text::Text::new_color(WHITE, 32/(game.x_size as f32 *0.1) as u32).draw(&tile.value.to_string(), &mut glyph_cache, &DrawState::default(), c.transform.trans(x * tile_size[0] + (tile_size[0]/4.5), (y * tile_size[1]) + (tile_size[1]/1.2)), gl).unwrap();
@@ -134,9 +158,10 @@ impl App {
     }
 
     fn update(&mut self, args: &UpdateArgs, game: &GameInstance) {
-        // Rotate 2 radians per second.
-        self.rotation += 2.0 * args.dt;
-        //Check for tile clicks here
+        //Only start updating timer once game is started
+        if game.bomb_count != 0 {
+            self.timer += 1.0 * args.dt;
+        }
         
     }
 
@@ -145,18 +170,12 @@ impl App {
 fn main() {
 
     let mut game_start = false;
-
+    //chrono::offset::Utc::now();
     let mut game = GameInstance::default();
 
     let h = Header::default();
     let offset = h.header_height;
-    println!("vec: {:?}", game.grid[0][0].value);
-    if game_start {
-        //grid::plant_bombs(&mut game);
-        //grid::fill_numbers(&mut game);
-        grid::debug_map(&game.grid, false);
-        
-    }
+    //println!("vec: {:?}", game.grid[0][0].value);
 
     //Change this to OpenGL::V2_1 if not working.
     let opengl = OpenGL::V3_2;
@@ -172,6 +191,7 @@ fn main() {
     let mut app = App {
         gl: GlGraphics::new(opengl),
         rotation: 0.0,
+        timer: 0.0,
     };
     let mut cursor = [0.0, 0.0];
     let mut events = Events::new(EventSettings::new());
@@ -192,10 +212,13 @@ fn main() {
             match button {
                 MouseButton::Left => {
                     if !game_start {
-                        grid::plant_bombs(&mut game, cursor);
-                        grid::fill_numbers(&mut game);
-                        grid::left_click(cursor, &mut game);
-                        game_start = true;
+                        if click_on_grid(&cursor, &game) {
+                            grid::plant_bombs(&mut game, cursor);
+                            grid::fill_numbers(&mut game);
+                            grid::left_click(cursor, &mut game);
+                            grid::debug_map(&game.grid, false);
+                            game_start = true;
+                        }
                     } else {
                         grid::left_click(cursor, &mut game);
                         if grid::check_win(&game) {
