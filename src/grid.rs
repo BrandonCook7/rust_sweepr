@@ -31,23 +31,6 @@ impl Tile {
         }
     }
 }
-
-pub struct Header {
-    pub header_height: f64,
-    pub font: String,
-    pub bg_color: [f32; 4],
-    pub font_color: [f32; 4],
-}
-impl Default for Header {
-    fn default() -> Header {
-        Header {
-            header_height: 30.0,
-            font: String::from("assets/Roboto-Medium.ttf"),
-            bg_color: [1.0, 1.0, 1.0, 1.0],
-            font_color: [0.0, 0.0, 0.0, 1.0],
-        }
-    }
-}
 pub struct GameInstance {
     pub x_size: usize,
     pub y_size: usize,
@@ -56,8 +39,7 @@ pub struct GameInstance {
     pub window_size: [f64; 2],
     pub flag_count: i32, //Variable for storing how many flags are left mutable
     pub bomb_count: i32, //Variable for storing how many bombs are planted - STATIC
-    pub start_time: NaiveTime,
-    pub header: Header,
+    pub game_state: i32,
 }
 impl Default for GameInstance {
     fn default() -> GameInstance {
@@ -69,13 +51,12 @@ impl Default for GameInstance {
             window_size: [400.0, 430.0],
             flag_count: 0,
             bomb_count: 0,
-            start_time: chrono::offset::Utc::now().time(),
-            header: Header::default(),
+            game_state: 1,
         }
     }
 }
 impl GameInstance {
-    fn large() -> GameInstance {
+    pub fn large() -> GameInstance {
         GameInstance {
             x_size: 20,
             y_size: 20,
@@ -84,8 +65,19 @@ impl GameInstance {
             window_size: [400.0, 430.0],
             flag_count: 0,
             bomb_count: 0,
-            start_time: chrono::offset::Utc::now().time(),
-            header: Header::default(),
+            game_state: 1,
+        }
+    }
+    pub fn empty() -> GameInstance {
+        GameInstance {
+            x_size: 0,
+            y_size: 0,
+            grid: create_grid(1, 1),
+            grid_size: [0.0, 0.0],
+            window_size: [400.0, 430.0],
+            flag_count: 0,
+            bomb_count: 0,
+            game_state: 0,
         }
     }
 }
@@ -106,7 +98,7 @@ pub fn plant_bombs(game: &mut GameInstance, coords: [f64; 2]){
     let tile_count = game.grid.len() * game.grid[0].len();//Get the total number of tiles
     let mut rng = thread_rng();
     let y: f64 = rng.gen_range(0.75, 1.25);
-    let mut bomb_count = ((tile_count/5) as f64 * y).round() as i32;
+    let mut bomb_count = ((tile_count/4) as f64 * y).round() as i32;
     game.bomb_count = bomb_count;
     game.flag_count = bomb_count;
     println!("Bomb Count {}", bomb_count);
@@ -156,7 +148,7 @@ fn find_tile(coords: [f64; 2], game: &GameInstance) -> [f64; 2]{
 }
 
 //Calculates what value each tile should have
-pub fn fill_numbers(game: &mut GameInstance){
+pub fn fill_numbers(game: &mut GameInstance, ){
     for row in 0..game.x_size as i32 {
         for col in 0..game.y_size as i32 {
             if game.grid[row as usize][col as usize].value != -1{
@@ -309,6 +301,8 @@ pub fn left_click(coords: [f64; 2], game: &mut GameInstance){
         if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].value == -1 {
             //Do a animation for losing here
             println!("You Lost!");
+            //Setting flag count to -1 will mark as game losing
+            game.game_state = -1;
         }
         if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden == true {
             game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden = false;

@@ -20,7 +20,7 @@ mod grid;
 use grid::Tile;
 use grid::GameInstance;
 
-use crate::grid::{flood_fill, Header, click_on_grid};
+use crate::grid::{flood_fill, click_on_grid};
 
 // struct Images {
 //     box_1: String,
@@ -71,10 +71,9 @@ impl App {
             let ds = DrawState::default();
             //ts.set_border_color(GRAY);
             let mut glyph_cache = GlyphCache::new("assets/Roboto-Medium.ttf", (), TextureSettings::new()).unwrap();
-
-
+            let mut font2 = GlyphCache::new("assets/Inversionz.otf", (), TextureSettings::new()).unwrap();
+                
             //Draw Menu header HERE
-            let h = &game.header;
             let header_background: [f64;4] = [
                 0.0,
                 game.grid_size[1],
@@ -84,7 +83,7 @@ impl App {
 
             let middle_header = game.grid_size[1] + ((game.window_size[1] - game.grid_size[1])/2.0);
             //Draws header background
-            rectangle(h.bg_color, header_background, transform, gl);
+            rectangle([1.0, 1.0, 1.0, 1.0], header_background, transform, gl);
             //Draw Flag icon
             let flag_image = Image::new().rect(rectangle::square(0.0, middle_header-16.0, 32.0));
             let flag_texture = Texture::from_path(Path::new("assets/tileset_01/flag.png"), &ts).unwrap();
@@ -96,9 +95,10 @@ impl App {
             let time_string = (self.timer as i32).to_string();
             text::Text::new_color(BLACK, 12 as u32).draw(&time_string, &mut glyph_cache, &DrawState::default(), c.transform.trans(game.window_size[0]-20.0, middle_header+4.0), gl).unwrap();
             //Draw clock icon
-            let clock_image = Image::new().rect(rectangle::square(game.window_size[0]-50.0, middle_header-12.0, 24.0));
-            let clock_texture = Texture::from_path(Path::new("assets/tileset_01/clock.png"), &ts).unwrap();
-            clock_image.draw(&clock_texture, &ds, transform, gl);
+            //TODO: Some reason clock image significantly slows down timer
+            // let clock_image = Image::new().rect(rectangle::square(game.window_size[0]-50.0, middle_header-12.0, 24.0));
+            // let clock_texture = Texture::from_path(Path::new("assets/tileset_01/clock.png"), &ts).unwrap();
+            // clock_image.draw(&clock_texture, &ds, transform, gl);
 
             let mut x = 0.0;//x position of tile
             let mut y = 0.0;//y position of tile
@@ -170,19 +170,13 @@ impl App {
 fn main() {
 
     let mut game_start = false;
-    //chrono::offset::Utc::now();
-    let mut game = GameInstance::default();
-
-    let h = Header::default();
-    let offset = h.header_height;
-    //println!("vec: {:?}", game.grid[0][0].value);
+    let mut game = GameInstance::large();
 
     //Change this to OpenGL::V2_1 if not working.
     let opengl = OpenGL::V3_2;
-
     // Create a Glutin window.
     let mut window: PistonWindow = WindowSettings::new("Minesweeper", [game.window_size[0], game.window_size[1]])
-        //.graphics_api(opengl)
+        .graphics_api(opengl)
         .exit_on_esc(true)
         .build()
         .unwrap();
@@ -212,7 +206,7 @@ fn main() {
             match button {
                 MouseButton::Left => {
                     if !game_start {
-                        if click_on_grid(&cursor, &game) {
+                        if click_on_grid(&cursor, &game) && game.game_state == 1{
                             grid::plant_bombs(&mut game, cursor);
                             grid::fill_numbers(&mut game);
                             grid::left_click(cursor, &mut game);
