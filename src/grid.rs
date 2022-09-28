@@ -1,3 +1,7 @@
+use chrono::DateTime;
+use chrono::Utc;
+use chrono::NaiveTime;
+
 extern crate rand;
 
 use rand::thread_rng;   
@@ -27,14 +31,15 @@ impl Tile {
         }
     }
 }
-
 pub struct GameInstance {
     pub x_size: usize,
     pub y_size: usize,
     pub grid: Vec<Vec<Tile>>,
-    pub window_size: [f64; 2], //Window size should use x_size and y_size
+    pub grid_size: [f64; 2], //Window size should use x_size and y_size
+    pub window_size: [f64; 2],
     pub flag_count: i32, //Variable for storing how many flags are left mutable
     pub bomb_count: i32, //Variable for storing how many bombs are planted - STATIC
+    pub game_state: i32,
 }
 impl Default for GameInstance {
     fn default() -> GameInstance {
@@ -42,21 +47,37 @@ impl Default for GameInstance {
             x_size: 10,
             y_size: 10,
             grid: create_grid(10, 10),
-            window_size: [400.0, 400.0],
+            grid_size: [400.0, 400.0],
+            window_size: [400.0, 430.0],
             flag_count: 0,
             bomb_count: 0,
+            game_state: 1,
         }
     }
 }
 impl GameInstance {
-    fn large() -> GameInstance {
+    pub fn large() -> GameInstance {
         GameInstance {
             x_size: 20,
             y_size: 20,
             grid: create_grid(20, 20),
-            window_size: [400.0, 400.0],
+            grid_size: [400.0, 400.0],
+            window_size: [400.0, 430.0],
             flag_count: 0,
             bomb_count: 0,
+            game_state: 1,
+        }
+    }
+    pub fn empty() -> GameInstance {
+        GameInstance {
+            x_size: 0,
+            y_size: 0,
+            grid: create_grid(1, 1),
+            grid_size: [0.0, 0.0],
+            window_size: [400.0, 430.0],
+            flag_count: 0,
+            bomb_count: 0,
+            game_state: 0,
         }
     }
 }
@@ -69,23 +90,33 @@ pub fn create_grid(x_size: usize, y_size: usize) -> Vec<Vec<Tile>> {
     return vec;
 }
 //Function that plants bombs over the grid
-pub fn plant_bombs(game: &mut GameInstance){
+pub fn plant_bombs(game: &mut GameInstance, coords: [f64; 2]){
+    //Get tile for first tile selected
+    let tile_coords = find_tile(coords, &game);
     let row_len = game.grid.len();
     let col_len = game.grid[0].len();
     let tile_count = game.grid.len() * game.grid[0].len();//Get the total number of tiles
     let mut rng = thread_rng();
     let y: f64 = rng.gen_range(0.75, 1.25);
-    let mut bomb_count = ((tile_count/10) as f64 * y).round() as i32;
+    let mut bomb_count = ((tile_count/4) as f64 * y).round() as i32;
     game.bomb_count = bomb_count;
     game.flag_count = bomb_count;
     println!("Bomb Count {}", bomb_count);
     while bomb_count > 0 {
         let row = rng.gen_range(0, row_len);
         let col = rng.gen_range(0, col_len);
-        if game.grid[row as usize][col as usize].value != -1 {
-            game.grid[row as usize][col as usize] = Tile::bomb();
-            bomb_count -= 1;
+        // if (row != tile_coords[1] && col != tile_coords[0]) ||
+        // (row != tile_coords[1]-1 && col != tile_coords[0]-1) || 
+        // (row != tile_coords[1]-1 && col != tile_coords[0]-1) || 
+        let r = row as f64;
+        let c = col as f64;
+        if !(r as f64 >= tile_coords[1]-1.0 && c >= tile_coords[0]-1.0 && r <= tile_coords[1]+1.0 && c <= tile_coords[0]+1.0) {
+            if game.grid[row as usize][col as usize].value != -1 {
+                game.grid[row as usize][col as usize] = Tile::bomb();
+                bomb_count -= 1;
+            }
         }
+
     }
 
 }
@@ -109,7 +140,7 @@ pub fn debug_map(vec: &Vec<Vec<Tile>>, hidden: bool){
 }
 //Converts mouse coordinates to tile
 fn find_tile(coords: [f64; 2], game: &GameInstance) -> [f64; 2]{
-    let tile_size: [f64; 2] = [game.window_size[0]/game.x_size as f64, game.window_size[1]/game.y_size as f64];
+    let tile_size: [f64; 2] = [game.grid_size[0]/game.x_size as f64, game.grid_size[1]/game.y_size as f64];
     let x = coords[0] / tile_size[0];
     let y = coords[1] / tile_size[1];
     //println!("X: {}, Y: {}", x, y);
@@ -117,7 +148,7 @@ fn find_tile(coords: [f64; 2], game: &GameInstance) -> [f64; 2]{
 }
 
 //Calculates what value each tile should have
-pub fn fill_numbers(game: &mut GameInstance){
+pub fn fill_numbers(game: &mut GameInstance, ){
     for row in 0..game.x_size as i32 {
         for col in 0..game.y_size as i32 {
             if game.grid[row as usize][col as usize].value != -1{
@@ -265,33 +296,45 @@ fn show_empty_edges(game: &mut GameInstance, shown_tiles: Vec<[i32; 2]>){
 }
 
 pub fn left_click(coords: [f64; 2], game: &mut GameInstance){
-    let tile_coords = find_tile(coords, &game);
-    if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].value == -1 {
-        //Do a animation for losing here
-        println!("You Lost!");
-    }
-    if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden == true {
-        game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden = false;
-        if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].value == 0 {
-            let shown_tiles = flood_fill(game, tile_coords[1].floor() as i32, tile_coords[0].floor() as i32);
-            show_empty_edges(game, shown_tiles);
+    if click_on_grid(&coords, &game) {
+        let tile_coords = find_tile(coords, &game);
+        if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].value == -1 {
+            //Do a animation for losing here
+            println!("You Lost!");
+            //Setting flag count to -1 will mark as game losing
+            game.game_state = -1;
+        }
+        if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden == true {
+            game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden = false;
+            if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].value == 0 {
+                let shown_tiles = flood_fill(game, tile_coords[1].floor() as i32, tile_coords[0].floor() as i32);
+                show_empty_edges(game, shown_tiles);
+            }
         }
     }
-
-
 }
 
 pub fn right_click(coords: [f64; 2], game: &mut GameInstance){
-    let tile_coords = find_tile(coords, &game);
-    if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden == true {
-        if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged == false {
-            game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged = true;
-            println!("FLAGGED");
-        } else {
-            game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged = false;
+    if click_on_grid(&coords, &game) {
+        let tile_coords = find_tile(coords, &game);
+        if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden == true {
+            if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged == false {
+                game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged = true;
+                game.flag_count -= 1;
+            } else {
+                game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged = false;
+                game.flag_count += 1;
+            }
         }
     }
-    
+}
+
+pub fn click_on_grid(coords: &[f64; 2], game: &GameInstance) -> bool{
+    if coords[0] > game.grid_size[1] || coords[1] > game.grid_size[0] {
+        false
+    } else {
+        true
+    }
 }
 
 //TODO: Impliment a more efficient way to check if player won
