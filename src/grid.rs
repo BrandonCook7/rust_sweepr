@@ -6,7 +6,9 @@ extern crate rand;
 
 use rand::thread_rng;   
 use rand::Rng;
+use bevy::{prelude::*};
 
+//use crate::GameResource;
 
 #[derive(Clone)]
 pub struct Tile {
