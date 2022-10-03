@@ -82,10 +82,11 @@ impl App {
                     50.0,
                 ];
                 //rectangle::square(30.0, 30.0, 32.0);
-                rectangle(RED, temp, c.transform.trans(game.window_size[0]/2.0, game.window_size[1]/3.0), gl);
-                let default_button_image = Image::new().rect(rectangle::square(game.window_size[0]/2.0, 80.0, 32.0));
-                let default_texture = Texture::from_path(Path::new("./assets/Images/Default_Grid.png"), &ts).unwrap();
-                default_button_image.draw(&default_texture, &DrawState::default(), c.transform, gl);
+                rectangle(RED, temp, transform.trans(game.window_size[0]/2.0, game.window_size[1]/3.0), gl);
+                let default_button_image = Image::new().rect(rectangle::square(game.window_size[0]/2.0, 80.0, 12.0));
+                let string = String::from("./assets/Images/Default_Grid.png");
+                let default_texture = Texture::from_path(Path::new(&string), &ts).unwrap();
+                default_button_image.draw(&default_texture, &ds, transform.trans(30.0, 70.0), gl);
                 //game.game_state = 1;
                 //text::Text::new_color(BLACK, 12 as u32).draw(&game.flag_count.to_string(), &mut font2, &DrawState::default(), c.transform.trans(30.0, 70.0), gl).unwrap();
             } else {
@@ -191,6 +192,7 @@ fn main() {
     let mut game = GameInstance::empty();
 
     //Change this to OpenGL::V2_1 if not working.
+    //Default is OpenGL::V3_2
     let opengl = OpenGL::V3_2;
     // Create a Glutin window.
     let mut window: Window = WindowSettings::new("Minesweeper", [game.window_size[0], game.window_size[1]])
