@@ -254,7 +254,8 @@ use crate::grid::{flood_fill, click_on_grid};
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
 
 #[derive(Clone, Eq, PartialEq, Debug, Hash)]
-enum GameState {
+pub enum GameState {
+    Start,
     Playing,
     GameOver,
 }
@@ -271,8 +272,10 @@ fn main() {
         //.add_plugin(HelloPlugin)
         .add_startup_system(create_game_instance)
         .add_startup_system(window_resize_system)
-        .add_state(GameState::Playing)
-        .add_system_set(SystemSet::on_enter(GameState::Playing).with_system(draw_grid))
+        .add_state(GameState::Start)
+        .add_system_set(SystemSet::on_enter(GameState::Start).with_system(draw_grid))
+        .add_system(mouse_button_input)
+        //.add_system(draw_grid)
         //.add_startup_stage_after(StartupStage::Startup, "d", draw_grid)
         //.add_startup_system(draw_grid)
         //.add_stage_after(draw_grid, "create_game")
@@ -284,9 +287,9 @@ fn main() {
 fn create_game_instance(mut commands: Commands){
     let mut game = GameInstance::default();
     //let mut game = game.0;
-    grid::plant_bombs(&mut game, [100.0, 0.0]);
-    grid::fill_numbers(&mut game);
-    grid::left_click([100.0, 0.0], &mut game);
+    // grid::plant_bombs(&mut game, [100.0, 0.0]);
+    // grid::fill_numbers(&mut game);
+    // grid::left_click([100.0, 0.0], &mut game);
     grid::debug_map(&game.grid, false);
     commands.spawn().insert(GameComponent(game));
     //GameInstance
@@ -308,6 +311,7 @@ fn draw_grid(
     let mut game = query.single_mut();
 
     commands.spawn_bundle(Camera2dBundle::default());
+    let tile_size = 40.0;//((game.0.grid_size[0]+1.0)/10.0) as f32;
     let mut x = 0.0;//x position of tile
     let mut y = 0.0;//y position of tile
     for row in game.0.grid.iter() {
@@ -316,7 +320,6 @@ fn draw_grid(
             if tile.flagged {
                 color_holder = Color::rgb(0.56, 0.56, 0.53);
             } else if tile.hidden {
-                println!("SHOW SQUARE");
                 color_holder = Color::rgb(1.0, 1.0, 1.0);
                 //rectangle(WHITE, rect, transform, gl);
             } else {
@@ -335,7 +338,6 @@ fn draw_grid(
                     }
                 }
             }
-            println!("Coords: X {}, Y {}", x*40.0, y *40.0);
             let coords = convert_coords(x*40.0, y*40.0);
             commands.spawn_bundle(SpriteBundle {
                 sprite: Sprite {
@@ -358,47 +360,57 @@ fn draw_grid(
     x = 0.0;
     }
 
-    //     //Draw grid
-    // for row in 1..row_len as i32 + 1 {
-    //     line(DARK_GRAY, 1.0, [row as f64 *tile_size[1], 0.0, row as f64 *tile_size[1], game.grid_size[1] as f64], transform, gl);
-    // }
-    // for col in 1..col_len as i32 + 1 {
-    //     line(DARK_GRAY, 1.0, [0.0, col as f64 *tile_size[0], game.grid_size[0] as f64, col as f64 *tile_size[0]], transform, gl);
-    // }
-        commands.spawn_bundle(MaterialMesh2dBundle {
-        //mesh: meshes.add(shape::Circle::new(50.).into()).into(),
-        mesh: meshes.add(shape::Box::new(400.0, 400.0, 0.0)),
-        material: materials.add(ColorMaterial::from(Color::PURPLE)),
-        transform: Transform::from_translation(Vec3::new(-100., 0., 0.)),
-        ..default()
-    });
+    for row in 1..game.0.grid_size[0] as i32 + 1 {
+        let coords = convert_coords(0.0, (row as f32) * tile_size);
+        commands.spawn_bundle(SpriteBundle {
+            sprite: Sprite {
+                color: Color::rgb(0.76, 0.84, 0.84),
+                custom_size: Some(Vec2::new(game.0.grid_size[0] as f32, 2.0)),
+                anchor: Anchor::TopLeft,
+                
+                ..default()
+            },
+            transform: Transform {
+                translation: Vec3::new(coords[0], coords[1], 0.0),
+                //scale: 1.0,
+                ..default()
+            },
+            ..default()
+        });
+    }
+    for col in 1..game.0.grid_size[1] as i32 + 1 {
+        let coords = convert_coords((col as f32) * tile_size, 0.0);
+        commands.spawn_bundle(SpriteBundle {
+            sprite: Sprite {
+                color: Color::rgb(0.76, 0.84, 0.84),
+                custom_size: Some(Vec2::new(2.0, game.0.grid_size[0] as f32)),
+                anchor: Anchor::TopLeft,
+                
+                ..default()
+            },
+            transform: Transform {
+                translation: Vec3::new(coords[0], coords[1], 0.0),
+                //scale: 1.0,
+                ..default()
+            },
+            ..default()
+        });
+    }
 }
 
 fn convert_coords(x_coord: f32, y_coord: f32) -> [f32;2]{
     let mut coords:[f32;2] = [0.0, 0.0];
-    // if x_coord >= 0.0 {
-    //     coords[0] = x_coord + X_RESOLUTION/2.0;
-    // } else {
-    //     coords[0] = X_RESOLUTION/2.0 - x_coord;
-    // }
-    // if y_coord >= 0.0 {
-    //     coords[1] = y_coord + Y_RESOLUTION/2.0;
-    // } else {
-    //     coords[1] = Y_RESOLUTION/2.0 - y_coord;
-    // }
-    // return coords;
+
     if x_coord >= X_RESOLUTION/2.0 {
         coords[0] = x_coord - X_RESOLUTION/2.0;
     } else {
         coords[0] = (X_RESOLUTION/2.0 - x_coord) * -1.0;
     }
     if y_coord >= Y_RESOLUTION/2.0 {
-        coords[1] = y_coord - Y_RESOLUTION/2.0;
+        coords[1] = (y_coord - Y_RESOLUTION/2.0) * -1.0;
     } else {
-        coords[1] = Y_RESOLUTION/2.0 - y_coord;
+        coords[1] = (Y_RESOLUTION/2.0 - y_coord);
     }
-    //coords = [X_RESOLUTION - x_coord, Y_RESOLUTION - y_coord];
-    //println!("X {}, Y {}", coords[0], coords[1]);
     coords
 }
 
@@ -406,27 +418,50 @@ fn print_query(mut query: Query<&mut GameComponent>){
     let game = query.single_mut();
     println!("{}", game.0.x_size);
 }
-fn render_grid(
-    mut commands: Commands,
-    //mut query: 
-    //mut query: Query<With<GameInstance>>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
+fn mouse_button_input(
+    mut query: Query<&mut GameComponent>,
+    buttons: Res<Input<MouseButton>>,
+    windows: Res<Windows>,
+    mut game_state: ResMut<State<GameState>>,
 ) {
-    //println!()
-    //let game = query.single_mut();
-    commands.spawn_bundle(Camera2dBundle::default());
-    // Rectangle
-    commands.spawn_bundle(SpriteBundle {
-        sprite: Sprite {
-            color: Color::rgb(0.25, 0.25, 0.75),
-            custom_size: Some(Vec2::new(50.0, 100.0)),
-            ..default()
-        },
-        ..default()
-    });
-}
+    let mut game = query.single_mut();
+    let window = windows.get_primary().unwrap();
+    if buttons.just_pressed(MouseButton::Left) {
+        // Left button was pressed
+        if let Some(_position) = window.cursor_position() {
+            // cursor is inside the window, position given
+            //if let GameState::Start = GameState {
+            println!("X: {}, Y: {}", _position.x, _position.y);
+            match game_state.current() {
+                GameState::Start => {
+                    let cursor = convert_coords(_position.x, _position.y);
+                    if click_on_grid(&cursor, &game.0){
+                        grid::plant_bombs(&mut game.0, cursor);
+                        grid::fill_numbers(&mut game.0);
+                        grid::left_click(cursor, &mut game.0);
+                        grid::debug_map(&game.0.grid, false);
+                        game_state.set(GameState::Playing).unwrap();
+                    }
+                }
+                GameState::Playing => {
+                    let cursor = convert_coords(_position.x, _position.y);
+                    if click_on_grid(&cursor, &game.0){
+                        grid::left_click(cursor, &mut game.0);
+                        grid::debug_map(&game.0.grid, false);
+                    }
+                }
+                _ => {}
+            }
 
+            }
+        } else {
+            // cursor is not inside the window
+        }
+        
+    if buttons.just_pressed(MouseButton::Right) {
+        // Right Button is being held down
+    }
+}
 // fn setup(
 //     mut commands: Commands,
 //     mut meshes: ResMut<Assets<Mesh>>,
