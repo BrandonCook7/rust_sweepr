@@ -1,11 +1,16 @@
 use chrono::Utc;
 
-extern crate glutin_window;
-extern crate graphics;
-extern crate opengl_graphics;
+
+mod include;
+use include::init_surface_config;
+use include::event_resize;
+
+//extern crate glutin_window;
+//extern crate graphics;
+//extern crate opengl_graphics;
 extern crate piston;
 
-use glutin_window::GlutinWindow as Window;
+//use glutin_window::GlutinWindow as Window;
 use opengl_graphics::{GlGraphics, OpenGL, GlyphCache, Texture};
 use graphics::{Image, clear};
 use graphics::rectangle::square;
@@ -14,6 +19,11 @@ use piston::input::{RenderArgs, Button, MouseButton, MouseCursorEvent, PressEven
 use piston::window::WindowSettings;
 use piston_window::*;
 use std::path::Path;
+
+//use wgpu_graphics::WgpuGraphics as wgpu;
+use texture::TextureSettings;
+use wgpu_graphics::{Texture, TextureContext};
+use winit_window::WinitWindow;
 
 
 mod grid;
@@ -193,67 +203,128 @@ fn main() {
 
     //Change this to OpenGL::V2_1 if not working.
     //Default is OpenGL::V3_2
-    let opengl = OpenGL::V3_2;
+    //let opengl = OpenGL::V3_2;
     // Create a Glutin window.
-    let mut window: Window = WindowSettings::new("Minesweeper", [game.window_size[0], game.window_size[1]])
-        .graphics_api(opengl)
-        .exit_on_esc(true)
-        .build()
+    // let mut window: Window = WindowSettings::new("Minesweeper", [game.window_size[0], game.window_size[1]])
+    //     .graphics_api(opengl)
+    //     .exit_on_esc(true)
+    //     .build()
+    //     .unwrap();
+    let mut window = WinitWindow::new(&WindowSettings::new("MineSweeper", [game.window_size[0], game.window_size[1]]));
+    
+    let instance = wgpu::Instance::new(wgpu::Backends::all());
+    let surface = unsafe { instance.create_surface(window.get_window()) };
+    let adapter =
+        futures::executor::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+            compatible_surface: Some(&surface),
+            ..Default::default()
+        }))
         .unwrap();
 
+
+    let (device, queue) = futures::executor::block_on(
+        adapter.request_device(&wgpu::DeviceDescriptor::default(), None),
+    )
+    .unwrap();
+
+    let mut surface_config = init_surface_config(&surface, &adapter, &window);
+
+    surface.configure(&device, &surface_config);
+
+    let mut wgpu2d = wgpu_graphics::Wgpu2d::new(&device, &surface_config);
     // Create a new game and run it.
-    let mut app = App {
-        gl: GlGraphics::new(opengl),
-        rotation: 0.0,
-        timer: 0.0,
-    };
+    // let mut app = App {
+    //     gl: GlGraphics::new(opengl),
+    //     rotation: 0.0,
+    //     timer: 0.0,
+    // };
     let mut cursor = [0.0, 0.0];
+
     let mut events = Events::new(EventSettings::new());
-    while let Some(e) = events.next(&mut window) {
 
-        e.mouse_cursor(|pos| cursor=pos);
+    let texture_context = TextureContext::from_parts(&device, &queue);
+    let mut glyph_cache = GlyphCache::new(
+        Path::new("assets/tileset_01/flag.png"),
+        texture_context,
+        TextureSettings::new(),
+    )
+    .unwrap();
+    while let Some(event) = events.next(&mut window) {
+        event_resize(&event, &device, &surface, &mut surface_config);
+        event.render(|render_args| {
+            let surface_texture = surface.get_current_texture().unwrap();
+            let surface_view = surface_texture
+                .texture
+                .create_view(&wgpu::TextureViewDescriptor::default());
 
-        if let Some(args) = e.render_args() {
-            app.render(&args, &mut game);
-            
-        }
-
-        if let Some(args) = e.update_args() {
-            app.update(&args, &game);
-        }
-        if let Some(Button::Mouse(button)) = e.press_args() {
-            println!("Mouse button pressed: {:?}", button);
-            match button {
-                MouseButton::Left => {
-                    if !game_start {
-                        if click_on_grid(&cursor, &game) && game.game_state == 1{
-                            grid::plant_bombs(&mut game, cursor);
-                            grid::fill_numbers(&mut game);
-                            grid::left_click(cursor, &mut game);
-                            grid::debug_map(&game.grid, false);
-                            game_start = true;
-                        }
-                    } else {
-                        grid::left_click(cursor, &mut game);
-                        if grid::check_win(&game) {
-                            println!("YOU WIN!")
-                    }
-
-                    }
-                }
-                MouseButton::Right => {
-                    if game_start {
-                        grid::right_click(cursor, &mut game);
-                        if grid::check_win(&game) {
-                            println!("YOU WIN!")
-                        }
-                    }
-
-                }
-                _ => ()
-            }
-        }
+            let command_buffer = wgpu2d.draw(
+                &device,
+                &surface_config,
+                &surface_view,
+                render_args.viewport(),
+                |c, g| {
+                    clear([1.0; 4], g);
+                    Text::new_color([0.0, 0.5, 0.0, 1.0], 32)
+                        .draw(
+                            "Hello wgpu_graphics!",
+                            &mut glyph_cache,
+                            &DrawState::default(),
+                            c.transform.trans(10.0, 100.0),
+                            g,
+                        )
+                        .unwrap();
+                },
+            );
+            queue.submit(std::iter::once(command_buffer));
+            surface_texture.present();
+        });
     }
+    // let mut events = Events::new(EventSettings::new());
+    // while let Some(e) = events.next(&mut window) {
+
+    //     e.mouse_cursor(|pos| cursor=pos);
+
+    //     if let Some(args) = e.render_args() {
+    //         app.render(&args, &mut game);
+            
+    //     }
+
+    //     if let Some(args) = e.update_args() {
+    //         app.update(&args, &game);
+    //     }
+    //     if let Some(Button::Mouse(button)) = e.press_args() {
+    //         println!("Mouse button pressed: {:?}", button);
+    //         match button {
+    //             MouseButton::Left => {
+    //                 if !game_start {
+    //                     if click_on_grid(&cursor, &game) && game.game_state == 1{
+    //                         grid::plant_bombs(&mut game, cursor);
+    //                         grid::fill_numbers(&mut game);
+    //                         grid::left_click(cursor, &mut game);
+    //                         grid::debug_map(&game.grid, false);
+    //                         game_start = true;
+    //                     }
+    //                 } else {
+    //                     grid::left_click(cursor, &mut game);
+    //                     if grid::check_win(&game) {
+    //                         println!("YOU WIN!")
+    //                 }
+
+    //                 }
+    //             }
+    //             MouseButton::Right => {
+    //                 if game_start {
+    //                     grid::right_click(cursor, &mut game);
+    //                     if grid::check_win(&game) {
+    //                         println!("YOU WIN!")
+    //                     }
+    //                 }
+
+    //             }
+    //             _ => ()
+    //         }
+    //     }
+    // }
     
 }
 

@@ -8,8 +8,15 @@ edition = "2021"
 [dependencies]
 piston = "0.53.0"
 piston2d-graphics = "0.42.0"
-pistoncore-glutin_window = "0.69.0"
-piston2d-opengl_graphics = "0.81.0"
+#pistoncore-glutin_window = "0.69.0"
+#piston2d-opengl_graphics = "0.81.0"
 rand = "0.7.3"
 piston_window = "*"
 chrono = "*"
+
+find_folder = "0.3"
+futures = "0.3"
+piston-texture = "0.8.0"
+piston2d-wgpu_graphics = "0.4.0"
+wgpu = "*"
+pistoncore-winit_window = { git = "https://github.com/PistonDevelopers/winit_window" }
