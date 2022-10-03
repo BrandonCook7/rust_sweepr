@@ -196,8 +196,9 @@ fn main() {
     let opengl = OpenGL::V3_2;
     // Create a Glutin window.
     let mut window: Window = WindowSettings::new("Minesweeper", [game.window_size[0], game.window_size[1]])
-        .graphics_api(opengl)
+        //.graphics_api(opengl)
         .exit_on_esc(true)
+        .graphics_api(opengl)
         .build()
         .unwrap();
 
