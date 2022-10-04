@@ -40,6 +40,7 @@ pub struct GameInstance {
     pub flag_count: i32, //Variable for storing how many flags are left mutable
     pub bomb_count: i32, //Variable for storing how many bombs are planted - STATIC
     pub game_state: i32,
+    pub start_time: NaiveTime,
 }
 impl Default for GameInstance {
     fn default() -> GameInstance {
@@ -48,10 +49,11 @@ impl Default for GameInstance {
             y_size: 10,
             grid: create_grid(10, 10),
             grid_size: [400.0, 400.0],
-            window_size: [400.0, 430.0],
+            window_size: [400.0, 450.0],
             flag_count: 0,
             bomb_count: 0,
-            game_state: 1,
+            game_state: 0,
+            start_time: chrono::offset::Utc::now().time(),
         }
     }
 }
@@ -62,10 +64,11 @@ impl GameInstance {
             y_size: 20,
             grid: create_grid(20, 20),
             grid_size: [400.0, 400.0],
-            window_size: [400.0, 430.0],
+            window_size: [400.0, 450.0],
             flag_count: 0,
             bomb_count: 0,
-            game_state: 1,
+            game_state: 0,
+            start_time: chrono::offset::Utc::now().time(),
         }
     }
     pub fn empty() -> GameInstance {
@@ -74,10 +77,11 @@ impl GameInstance {
             y_size: 0,
             grid: create_grid(1, 1),
             grid_size: [0.0, 0.0],
-            window_size: [400.0, 430.0],
+            window_size: [400.0, 450.0],
             flag_count: 0,
             bomb_count: 0,
             game_state: 0,
+            start_time: chrono::offset::Utc::now().time(),
         }
     }
 }
