@@ -52,7 +52,7 @@ impl Default for GameInstance {
             window_size: [400.0, 450.0],
             flag_count: 0,
             bomb_count: 0,
-            game_state: 0,
+            game_state: -2,
             start_time: chrono::offset::Utc::now().time(),
         }
     }
@@ -192,7 +192,7 @@ pub fn fill_numbers(game: &mut GameInstance, ){
 //Returns 1 if there is a bomb at coords
 fn check_bomb(game: &GameInstance, x: i32, y: i32) -> i32{
     if x >= 0 && y >= 0 && x < game.x_size as i32 && y < game.y_size as i32 {
-        println!("X: {}, Y {}",x, y);
+        //println!("X: {}, Y {}",x, y);
         if game.grid[x as usize][y as usize].value == -1 {
             return 1;
         }

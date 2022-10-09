@@ -13,11 +13,21 @@
 // use piston_window::*;
 // use std::path::Path;
 
+use grid::create_grid;
 //External Packages
-use chrono::Utc;
+use macroquad::prelude::*;
 use macroquad::text;
+use macroquad::ui::widgets;
+use macroquad::ui::widgets::InputText;
 use std::collections::HashMap;
+use std::string;
+use macroquad::ui::{
+    hash, root_ui,
+    widgets:: {Group},
+    Drag, Ui,
+};
 
+use chrono::Utc;
 
 //Internal Packages
 mod grid;
@@ -27,8 +37,6 @@ use grid::GameInstance;
 use crate::grid::{flood_fill, click_on_grid};
 
 
-
-use macroquad::prelude::*;
 
 fn window_conf() -> Conf {
     Conf {
@@ -43,36 +51,87 @@ fn window_conf() -> Conf {
 //#[macroquad::main("Minesweeper")]
 #[macroquad::main(window_conf)]
 async fn main() {
-
     let mut texture_map: HashMap<String,Texture2D> = HashMap::new();
     let mut texture: Texture2D = load_texture("assets/tileset_01/clock.png").await.unwrap();
     texture_map.insert("clock".to_string(), texture);
     texture = load_texture("assets/tileset_01/flag.png").await.unwrap();
     texture_map.insert("flag".to_string(), texture);
+    texture = load_texture("assets/Images/Default_Grid.png").await.unwrap();
+    texture_map.insert("grid1".to_string(), texture);
+    texture = load_texture("assets/Images/background.png").await.unwrap();
+    texture_map.insert("background".to_string(), texture);
 
     let font = load_ttf_font("assets/Roboto-Medium.ttf").await.unwrap();
     let mut game = GameInstance::default();
+    let mut in_menu: bool = true;
+    let mut x_input: f32 = 10.0;
+    let mut y_input: f32 = 10.0;
 
     loop {
-        render(&mut game, &texture_map, &Some(font));
-        check_clicks(&mut game);
+        if !in_menu{
+            render(&mut game, &texture_map, &Some(font));
+            check_clicks(&mut game);
+        } else {
+            in_menu = draw_menu(&mut game, &texture_map, &Some(font), &mut x_input, &mut y_input);
+            x_input = x_input.floor();
+            y_input = y_input.floor();
+        }
+
         next_frame().await
     }
 }
 
 fn render(game: &mut GameInstance, texture_map: &HashMap<String,Texture2D>, font: &Option<Font>) {
     clear_background(WHITE);
-
     // draw_line(40.0, 40.0, 100.0, 200.0, 15.0, BLUE);
     // draw_rectangle(screen_width() / 2.0 - 60.0, 100.0, 120.0, 60.0, GREEN);
     // draw_circle(screen_width() - 30.0, screen_height() - 30.0, 15.0, YELLOW);
 
+    
     draw_grid(game, font);
-    if game.game_state != 0{
-        draw_info_bar(game, &texture_map, font);
-    }
-
+    draw_info_bar(game, &texture_map, font)
     //draw_text("IT WORKS!", 20.0, 20.0, 30.0, DARKGRAY);
+}
+fn draw_menu(game: &mut GameInstance, texture_map: &HashMap<String,Texture2D>, font: &Option<Font>, x_input: &mut f32, y_input: &mut f32) -> bool{
+    let mut in_menu = true;
+    draw_texture_ex(texture_map["background"], 0.0, 0.0, WHITE, DrawTextureParams { dest_size: Some(Vec2{x: 400.0, y: 500.0}), ..Default::default()});
+    widgets::Window::new(hash!(), vec2(50.0, 200.0), vec2(300.0, 150.0))
+    .label("Menu")
+    .titlebar(true)
+    .ui(&mut *root_ui(), |ui| {
+        // Group::new(hash!("shop", i), Vec2::new(300., 80.)).ui(ui, |ui| {
+        //     ui.label(Vec2::new(10., 10.), &format!("Item N {}", i));
+        //     ui.label(Vec2::new(260., 40.), "10/10");
+        //     ui.label(Vec2::new(200., 58.), &format!("{} kr", 800));
+        //     if ui.button(Vec2::new(260., 55.), "buy") {
+        //         data.inventory.push(format!("Item {}", i));
+        //     }
+        // });
+        // ui.input_text(hash!(), "Grid X Size", x_string);
+        // ui.input_text(hash!(), "Grid Y Size", y_string);
+        ui.slider(hash!(), "[4 .. 20]", 4f32..20f32, x_input);
+        ui.slider(hash!(), "[4 .. 20]", 4f32..20f32, y_input);
+        //x_input.round();
+        if ui.button(Vec2::new(150.0, 50.0), "Start"){
+            //let grid_x = x_input.;
+            game.game_state = 0;
+            game.x_size = x_input.floor() as usize;
+            game.y_size = y_input.floor() as usize;
+            game.grid = create_grid(game.x_size, game.y_size);
+            in_menu = false;
+        }
+    });
+
+    draw_text_ex("MineSweeper", (game.window_size[0]/2.0)-80.0, game.window_size[1]/4.0,
+    TextParams {
+        font_size: 25,
+        font: font.unwrap_or(Default::default()),
+        color: BLACK,
+        ..Default::default()
+    },);
+
+    draw_texture_ex(texture_map["grid1"], game.window_size[0]/4.0, game.window_size[1]/2.0, WHITE, DrawTextureParams { dest_size: Some(Vec2{x: 60.0, y: 60.0}), ..Default::default()});
+    return in_menu;
 }
 fn check_clicks(game: &mut GameInstance){
     let cursor_tuple = mouse_position();
