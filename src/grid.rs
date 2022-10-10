@@ -303,16 +303,21 @@ pub fn left_click(coords: [f32; 2], game: &mut GameInstance){
     if click_on_grid(&coords, &game) {
         let tile_coords = find_tile(coords, &game);
         if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].value == -1 {
-            //Do a animation for losing here
-            println!("You Lost!");
-            //Setting flag count to -1 will mark as game losing
-            game.game_state = -1;
+            if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged == false {
+                //Do a animation for losing here
+                println!("You Lost!");
+                //Setting flag count to -1 will mark as game losing
+                game.game_state = -1;
+            }
         }
         if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden == true {
-            game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden = false;
-            if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].value == 0 {
-                let shown_tiles = flood_fill(game, tile_coords[1].floor() as i32, tile_coords[0].floor() as i32);
-                show_empty_edges(game, shown_tiles);
+            //Need to check if tile user is clicking on has not been flagged.
+            if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged == false {
+                game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden = false;
+                if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].value == 0 {
+                    let shown_tiles = flood_fill(game, tile_coords[1].floor() as i32, tile_coords[0].floor() as i32);
+                    show_empty_edges(game, shown_tiles);
+                }
             }
         }
     }

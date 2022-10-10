@@ -60,6 +60,8 @@ async fn main() {
     texture_map.insert("grid1".to_string(), texture);
     texture = load_texture("assets/Images/background.png").await.unwrap();
     texture_map.insert("background".to_string(), texture);
+    texture = load_texture("assets/Images/flag-marker.png").await.unwrap();
+    texture_map.insert("flag_marker".to_string(), texture);
 
     let font = load_ttf_font("assets/Roboto-Medium.ttf").await.unwrap();
     let mut game = GameInstance::default();
@@ -88,35 +90,28 @@ fn render(game: &mut GameInstance, texture_map: &HashMap<String,Texture2D>, font
     // draw_circle(screen_width() - 30.0, screen_height() - 30.0, 15.0, YELLOW);
 
     
-    draw_grid(game, font);
+    draw_grid(game, &texture_map, font);
     draw_info_bar(game, &texture_map, font)
     //draw_text("IT WORKS!", 20.0, 20.0, 30.0, DARKGRAY);
 }
 fn draw_menu(game: &mut GameInstance, texture_map: &HashMap<String,Texture2D>, font: &Option<Font>, x_input: &mut f32, y_input: &mut f32) -> bool{
     let mut in_menu = true;
+    //Draws background for menu
     draw_texture_ex(texture_map["background"], 0.0, 0.0, WHITE, DrawTextureParams { dest_size: Some(Vec2{x: 400.0, y: 500.0}), ..Default::default()});
     widgets::Window::new(hash!(), vec2(50.0, 200.0), vec2(300.0, 150.0))
     .label("Menu")
     .titlebar(true)
     .ui(&mut *root_ui(), |ui| {
-        // Group::new(hash!("shop", i), Vec2::new(300., 80.)).ui(ui, |ui| {
-        //     ui.label(Vec2::new(10., 10.), &format!("Item N {}", i));
-        //     ui.label(Vec2::new(260., 40.), "10/10");
-        //     ui.label(Vec2::new(200., 58.), &format!("{} kr", 800));
-        //     if ui.button(Vec2::new(260., 55.), "buy") {
-        //         data.inventory.push(format!("Item {}", i));
-        //     }
-        // });
-        // ui.input_text(hash!(), "Grid X Size", x_string);
-        // ui.input_text(hash!(), "Grid Y Size", y_string);
         ui.slider(hash!(), "[4 .. 20]", 4f32..20f32, x_input);
-        ui.slider(hash!(), "[4 .. 20]", 4f32..20f32, y_input);
+
+        //TODO: Allow grid to render x and y sizes independently with each cell still being a square
+        //ui.slider(hash!(), "[4 .. 20]", 4f32..20f32, y_input);
         //x_input.round();
         if ui.button(Vec2::new(150.0, 50.0), "Start"){
             //let grid_x = x_input.;
             game.game_state = 0;
             game.x_size = x_input.floor() as usize;
-            game.y_size = y_input.floor() as usize;
+            game.y_size = x_input.floor() as usize;
             game.grid = create_grid(game.x_size, game.y_size);
             in_menu = false;
         }
@@ -130,7 +125,6 @@ fn draw_menu(game: &mut GameInstance, texture_map: &HashMap<String,Texture2D>, f
         ..Default::default()
     },);
 
-    draw_texture_ex(texture_map["grid1"], game.window_size[0]/4.0, game.window_size[1]/2.0, WHITE, DrawTextureParams { dest_size: Some(Vec2{x: 60.0, y: 60.0}), ..Default::default()});
     return in_menu;
 }
 fn check_clicks(game: &mut GameInstance){
@@ -193,7 +187,7 @@ fn draw_info_bar(game: &mut GameInstance, texture_map: &HashMap<String,Texture2D
     //let clock_texture = Texture::from_path(Path::new("assets/tileset_01/clock.png"), &ts).unwrap();
 }
 //
-fn draw_grid(game: &mut GameInstance, font: &Option<Font>) {
+fn draw_grid(game: &mut GameInstance, texture_map: &HashMap<String,Texture2D>, font: &Option<Font>) {
     let tile_size: [f32; 2] = [game.grid_size[0]/game.x_size as f32, game.grid_size[0]/game.y_size as f32];
     let mut x = 0.0;//x position of tile
     let mut y = 0.0;//y position of tile
@@ -208,14 +202,12 @@ fn draw_grid(game: &mut GameInstance, font: &Option<Font>) {
             ];
             if tile.flagged {
                 //rectangle(SOFT_GRAY, rect, transform, gl);
-                draw_rectangle(x * tile_size[0], y * tile_size[1], tile_size[0], tile_size[1], GRAY);
-                //Polygon()
-                //polygon()
-                //let p = c.draw_state.
-                //rectangle()
+                draw_rectangle(x * tile_size[0], y * tile_size[1], tile_size[0], tile_size[1], Color::new(1.0, 0.941, 0.831, 1.0));
+                draw_texture_ex(texture_map["flag_marker"], x * tile_size[0],  y * tile_size[1], WHITE, DrawTextureParams { dest_size: Some(Vec2{x: 40.0, y: 40.0}), ..Default::default()});
             } else if tile.hidden {
                 //rectangle(WHITE, rect, transform, gl);
                 draw_rectangle(x * tile_size[0], y * tile_size[1], tile_size[0], tile_size[1], WHITE);
+
             } else {
                 if tile.value == -1 {
                     //rectangle([1.0, 0.68, 0.68, 1.0], rect, transform, gl);
