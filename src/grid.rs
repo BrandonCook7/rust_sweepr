@@ -89,8 +89,6 @@ impl GameInstance {
 pub fn create_grid(x_size: usize, y_size: usize) -> Vec<Vec<Tile>> {
     let s = Tile::new();
     let mut vec = vec![vec![s; x_size]; y_size];
-    //let mut arr: Vec<i32> = [[Square{hidden: true, value: 0}; 10], 10];
-    //let mut arr:[[Square; 10]; 10] = [[s; 10]; 10];
     return vec;
 }
 //Function that plants bombs over the grid
