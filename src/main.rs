@@ -21,6 +21,7 @@ use macroquad::ui::widgets;
 use macroquad::ui::widgets::InputText;
 use std::collections::HashMap;
 use std::string;
+use std::thread::sleep;
 use macroquad::ui::{
     hash, root_ui,
     widgets:: {Group},
@@ -48,6 +49,24 @@ fn window_conf() -> Conf {
         ..Default::default()
     }
 }
+
+async fn limit_fps(frame_limit: f32){
+    let minimum_frame_time = 1.0 / frame_limit;
+    let frame_time = get_frame_time();
+    if frame_time < minimum_frame_time {
+        next_frame().await
+        //let time_to_sleep = (minimum_frame_time - frame_time) * 1000.0;
+        //std::thread::sleep(std::time::Duration::from_millis(time_to_sleep as u64));
+    }
+}
+
+enum GameStatus {
+    Menu,
+    Playing,
+    Lost,
+    Won,
+}
+
 //#[macroquad::main("Minesweeper")]
 #[macroquad::main(window_conf)]
 async fn main() {
@@ -66,35 +85,72 @@ async fn main() {
     let font = load_ttf_font("assets/Roboto-Medium.ttf").await.unwrap();
     let mut game = GameInstance::default();
     let mut in_menu: bool = true;
+    let mut game_status = GameStatus::Menu;
     let mut x_input: f32 = 10.0;
     let mut y_input: f32 = 10.0;
-
     loop {
-        if !in_menu{
-            render(&mut game, &texture_map, &Some(font));
-            check_clicks(&mut game);
-        } else {
-            in_menu = draw_menu(&mut game, &texture_map, &Some(font), &mut x_input, &mut y_input);
-            x_input = x_input.floor();
-            y_input = y_input.floor();
+        //limit_fps(15.0);
+        if game.game_state == -1 {
+            game_status = GameStatus::Lost;
         }
-
+        match game_status {
+            GameStatus::Playing => {
+                render(&mut game, &texture_map, &Some(font)); 
+                check_clicks(&mut game);
+            },
+            GameStatus::Menu => {
+                game_status = draw_menu(&mut game, &texture_map, &Some(font), &mut x_input, &mut y_input);
+                x_input = x_input.floor();
+                y_input = y_input.floor();
+            },
+            GameStatus::Lost => {
+                //draw_texture_ex(texture_map["background"], 0.0, 0.0, WHITE, DrawTextureParams { dest_size: Some(Vec2{x: 400.0, y: 500.0}), ..Default::default()});
+                for row in 0..(game.grid.len() as i32) {
+                    for col in 0..(game.grid[0].len() as i32)  {
+                        game.grid[row as usize][col as usize].hidden = false;
+                    }
+                }
+                render(&mut game, &texture_map, &Some(font)); 
+                let win_height = 100.0;
+                let win_width = 150.0;
+                
+                widgets::Window::new(hash!(), vec2((game.window_size[0]/2.) -(win_width/2.), (game.window_size[1]/2.) -(win_height/2.)), vec2(150.0, 100.0))
+                .label("You Lost")
+                .titlebar(true)
+                .ui(&mut *root_ui(), |ui| {
+                    //TODO: Allow grid to render x and y sizes independently with each cell still being a square
+                    //ui.slider(hash!(), "[4 .. 20]", 4f32..20f32, y_input);
+                    //x_input.round();
+                    if ui.button(Vec2::new(57.0, 30.0), "Menu"){
+                        //let grid_x = x_input.;
+                        game_status = GameStatus::Menu;
+                        game.game_state = 0;
+                    }
+                });
+            },
+            GameStatus::Won => {
+                
+            }
+        }
         next_frame().await
     }
 }
 
+// fn lost_animation(game: &mut GameInstance, texture_map: &HashMap<String,Texture2D>, font: &Option<Font>) {
+//     for row in game.grid.iter_mut() {
+//         for tile in row.iter_mut() {
+//             tile.hidden = false;
+//             render(game, texture_map, font);
+//         }
+//     }
+// }
+
 fn render(game: &mut GameInstance, texture_map: &HashMap<String,Texture2D>, font: &Option<Font>) {
     clear_background(WHITE);
-    // draw_line(40.0, 40.0, 100.0, 200.0, 15.0, BLUE);
-    // draw_rectangle(screen_width() / 2.0 - 60.0, 100.0, 120.0, 60.0, GREEN);
-    // draw_circle(screen_width() - 30.0, screen_height() - 30.0, 15.0, YELLOW);
-
-    
     draw_grid(game, &texture_map, font);
     draw_info_bar(game, &texture_map, font)
-    //draw_text("IT WORKS!", 20.0, 20.0, 30.0, DARKGRAY);
 }
-fn draw_menu(game: &mut GameInstance, texture_map: &HashMap<String,Texture2D>, font: &Option<Font>, x_input: &mut f32, y_input: &mut f32) -> bool{
+fn draw_menu(game: &mut GameInstance, texture_map: &HashMap<String,Texture2D>, font: &Option<Font>, x_input: &mut f32, y_input: &mut f32) -> GameStatus{
     let mut in_menu = true;
     //Draws background for menu
     draw_texture_ex(texture_map["background"], 0.0, 0.0, WHITE, DrawTextureParams { dest_size: Some(Vec2{x: 400.0, y: 500.0}), ..Default::default()});
@@ -124,10 +180,14 @@ fn draw_menu(game: &mut GameInstance, texture_map: &HashMap<String,Texture2D>, f
         color: BLACK,
         ..Default::default()
     },);
-
-    return in_menu;
+    if in_menu {
+        return GameStatus::Menu;
+    } else {
+        return GameStatus::Playing;
+    }
+    
 }
-fn check_clicks(game: &mut GameInstance){
+fn check_clicks(game: &mut GameInstance) -> bool{
     let cursor_tuple = mouse_position();
     let cursor = [cursor_tuple.0, cursor_tuple.1];
     if is_mouse_button_pressed(MouseButton::Left){
@@ -146,8 +206,8 @@ fn check_clicks(game: &mut GameInstance){
             if grid::check_win(&game) {
                 println!("YOU WIN!")
         }
-    
         }
+        return true;
     } else if is_mouse_button_pressed(MouseButton::Right){
         if game.game_state == 1 {
             grid::right_click(cursor, game);
@@ -155,6 +215,9 @@ fn check_clicks(game: &mut GameInstance){
                 println!("YOU WIN!")
             }
         }  
+        return true;
+    } else {
+        return false;
     }
 
 }
@@ -164,7 +227,11 @@ fn draw_info_bar(game: &mut GameInstance, texture_map: &HashMap<String,Texture2D
     //Draw Timer
     let mut timer = chrono::offset::Utc::now().time() - game.start_time;
     //draw_texture_ex(texture_map["clock"], game.window_size[0]-90.0, middle_header-20.0, WHITE, DrawTextureParams { dest_size: Some(Vec2{x: 40.0, y: 40.0}), ..Default::default()});
-    draw_text_ex(&timer.num_seconds().to_string(), game.window_size[0]-45.0, middle_header+10.0,
+    let mut time_string = timer.num_seconds().to_string();
+    if game.game_state == 0{
+        time_string = String::from("0");
+    }
+    draw_text_ex(&time_string, game.window_size[0]-45.0, middle_header+10.0,
     TextParams {
         font_size: 25,
         font: font.unwrap_or(Default::default()),
