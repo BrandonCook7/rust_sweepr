@@ -7,6 +7,14 @@ extern crate rand;
 use rand::thread_rng;   
 use rand::Rng;
 
+#[derive(PartialEq)]
+pub enum GameStatus {
+    Menu,
+    Playing,
+    Lost,
+    Won,
+    PreGame //When the user clicks play but has not selected a tile
+}
 
 #[derive(Clone)]
 pub struct Tile {
@@ -40,6 +48,7 @@ pub struct GameInstance {
     pub flag_count: i32, //Variable for storing how many flags are left mutable
     pub bomb_count: i32, //Variable for storing how many bombs are planted - STATIC
     pub game_state: i32,
+    pub game_status: GameStatus,
     pub start_time: NaiveTime,
 }
 impl Default for GameInstance {
@@ -53,6 +62,7 @@ impl Default for GameInstance {
             flag_count: 0,
             bomb_count: 0,
             game_state: -2,
+            game_status: GameStatus::Menu,
             start_time: chrono::offset::Utc::now().time(),
         }
     }
@@ -68,6 +78,7 @@ impl GameInstance {
             flag_count: 0,
             bomb_count: 0,
             game_state: 0,
+            game_status: GameStatus::Menu,
             start_time: chrono::offset::Utc::now().time(),
         }
     }
@@ -81,6 +92,7 @@ impl GameInstance {
             flag_count: 0,
             bomb_count: 0,
             game_state: 0,
+            game_status: GameStatus::Menu,
             start_time: chrono::offset::Utc::now().time(),
         }
     }
@@ -305,7 +317,7 @@ pub fn left_click(coords: [f32; 2], game: &mut GameInstance){
                 //Do a animation for losing here
                 println!("You Lost!");
                 //Setting flag count to -1 will mark as game losing
-                game.game_state = -1;
+                game.game_status = GameStatus::Lost;
             }
         }
         if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden == true {
