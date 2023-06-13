@@ -91,7 +91,7 @@ async fn main() {
     let mut x_input: f32 = 10.0;
     let mut y_input: f32 = 10.0;
     loop {
-        //limit_fps(15.0);
+        limit_fps(35.0).await;
         // if game.game_state == -1 {
         //     game.game_status = grid::GameStatus::Lost;
         // }

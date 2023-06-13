@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 
-macroquad = "0.3"
+macroquad = "*"
 rand = "0.7.3"
 chrono = "*"
 find_folder = "*"

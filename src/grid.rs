@@ -338,8 +338,11 @@ pub fn right_click(coords: [f32; 2], game: &mut GameInstance){
         let tile_coords = find_tile(coords, &game);
         if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].hidden == true {
             if game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged == false {
-                game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged = true;
-                game.flag_count -= 1;
+                if game.flag_count > 0 {
+                    game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged = true;
+                    game.flag_count -= 1;
+                }
+
             } else {
                 game.grid[tile_coords[1] as usize][tile_coords[0] as usize].flagged = false;
                 game.flag_count += 1;
@@ -370,7 +373,7 @@ pub fn check_win(game: &GameInstance) -> bool{
             }
         }
     }
-    if (total_tiles as i32) - tiles_shown == game.bomb_count {
+    if ((total_tiles as i32) - tiles_shown == game.bomb_count) && game.flag_count == 0 {
         true
     } else {
         false
